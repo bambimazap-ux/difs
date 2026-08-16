@@ -14,13 +14,17 @@ export async function login(formData: FormData) {
     return { error: 'נא להזין אימייל וסיסמה' };
   }
 
-  const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as any;
+  const result = await db.execute({
+    sql: 'SELECT * FROM users WHERE email = ?',
+    args: [email]
+  });
+  const user = result.rows[0] as any;
 
   if (!user || !(await bcrypt.compare(password, user.password))) {
     return { error: 'אימייל או סיסמה שגויים' };
   }
 
-  await createSession(user.id, user.email, user.name);
+  await createSession(user.id as number, user.email as string, user.name as string);
   redirect('/');
 }
 
@@ -36,11 +40,14 @@ export async function register(formData: FormData) {
   const hashedPassword = await bcrypt.hash(password, 10);
 
   try {
-    const result = db.prepare('INSERT INTO users (name, email, password) VALUES (?, ?, ?)').run(name, email, hashedPassword);
-    await createSession(result.lastInsertRowid as number, email, name);
+    const result = await db.execute({
+      sql: 'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
+      args: [name, email, hashedPassword]
+    });
+    await createSession(Number(result.lastInsertRowid), email, name);
     redirect('/');
   } catch (err: any) {
-    if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+    if (err.message && err.message.includes('UNIQUE constraint failed')) {
       return { error: 'משתמש עם אימייל זה כבר קיים' };
     }
     return { error: 'שגיאה ביצירת משתמש' };
@@ -54,7 +61,8 @@ export async function logout() {
 
 // --- Topic Actions ---
 export async function getTopics() {
-  return db.prepare('SELECT * FROM topics ORDER BY created_at DESC').all();
+  const result = await db.execute('SELECT * FROM topics ORDER BY created_at DESC');
+  return result.rows;
 }
 
 export async function createTopic(formData: FormData) {
@@ -63,34 +71,45 @@ export async function createTopic(formData: FormData) {
 
   if (!title) return { error: 'נא להזין שם נושא' };
 
-  db.prepare('INSERT INTO topics (title, description) VALUES (?, ?)').run(title, description);
+  await db.execute({
+    sql: 'INSERT INTO topics (title, description) VALUES (?, ?)',
+    args: [title, description || null]
+  });
   revalidatePath('/');
 }
 
 export async function deleteTopic(id: number) {
-  db.prepare('DELETE FROM topics WHERE id = ?').run(id);
+  await db.execute({
+    sql: 'DELETE FROM topics WHERE id = ?',
+    args: [id]
+  });
   revalidatePath('/');
 }
 
 // --- Task Actions ---
 export async function getTasks() {
-  return db.prepare(`
+  const result = await db.execute(`
     SELECT tasks.*, topics.title as topic_title, users.name as user_name 
     FROM tasks 
     LEFT JOIN topics ON tasks.topic_id = topics.id
     LEFT JOIN users ON tasks.user_id = users.id
     ORDER BY tasks.created_at DESC
-  `).all();
+  `);
+  return result.rows;
 }
 
 export async function getTasksByTopic(topicId: number) {
-  return db.prepare(`
-    SELECT tasks.*, users.name as user_name 
-    FROM tasks 
-    LEFT JOIN users ON tasks.user_id = users.id
-    WHERE topic_id = ?
-    ORDER BY tasks.created_at DESC
-  `).all(topicId);
+  const result = await db.execute({
+    sql: `
+      SELECT tasks.*, users.name as user_name 
+      FROM tasks 
+      LEFT JOIN users ON tasks.user_id = users.id
+      WHERE topic_id = ?
+      ORDER BY tasks.created_at DESC
+    `,
+    args: [topicId]
+  });
+  return result.rows;
 }
 
 export async function createTask(formData: FormData) {
@@ -102,14 +121,18 @@ export async function createTask(formData: FormData) {
   
   if (!title || !topicId) return { error: 'חובה למלא שם משימה ונושא' };
 
-  db.prepare('INSERT INTO tasks (title, topic_id, user_id, drive_link, status) VALUES (?, ?, ?, ?, ?)').run(
-    title, topicId, userId || null, driveLink || null, status
-  );
+  await db.execute({
+    sql: 'INSERT INTO tasks (title, topic_id, user_id, drive_link, status) VALUES (?, ?, ?, ?, ?)',
+    args: [title, topicId, userId || null, driveLink || null, status]
+  });
   revalidatePath('/');
 }
 
 export async function updateTaskStatus(id: number, status: string) {
-  db.prepare('UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(status, id);
+  await db.execute({
+    sql: 'UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    args: [status, id]
+  });
   revalidatePath('/');
 }
 
@@ -122,17 +145,22 @@ export async function updateTask(id: number, formData: FormData) {
 
   if (!title || !topicId) return { error: 'חובה למלא שם משימה ונושא' };
 
-  db.prepare('UPDATE tasks SET title = ?, description = ?, drive_link = ?, topic_id = ?, user_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(
-    title, description || null, driveLink || null, topicId, userId || null, id
-  );
+  await db.execute({
+    sql: 'UPDATE tasks SET title = ?, description = ?, drive_link = ?, topic_id = ?, user_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    args: [title, description || null, driveLink || null, topicId, userId || null, id]
+  });
   revalidatePath('/');
 }
 
 export async function deleteTask(id: number) {
-  db.prepare('DELETE FROM tasks WHERE id = ?').run(id);
+  await db.execute({
+    sql: 'DELETE FROM tasks WHERE id = ?',
+    args: [id]
+  });
   revalidatePath('/');
 }
 
 export async function getUsers() {
-  return db.prepare('SELECT id, name, email FROM users').all();
+  const result = await db.execute('SELECT id, name, email FROM users');
+  return result.rows;
 }
