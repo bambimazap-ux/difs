@@ -1,17 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { logout, createTopic, createTask, updateTaskStatus, deleteTask, updateTask } from '@/lib/actions';
+import { logout, createTopic, createTask, updateTaskStatus, deleteTask, updateTask, createTeamMember } from '@/lib/actions';
 import { 
   CheckCircle2, Circle, AlertCircle, Clock, 
   Plus, LogOut, LayoutDashboard, Folder, User, MessageCircle, BarChart, Edit2, Link, ExternalLink,
-  Calendar, AlertTriangle, Download, Copy, Check, Share2
+  Calendar, AlertTriangle, Download, Copy, Check, Share2, UserPlus
 } from 'lucide-react';
 
 export default function DashboardClient({ initialTopics, initialTasks, users, currentUser }: any) {
   const [activeFilter, setActiveFilter] = useState<number | 'ALL' | 'MY' | 'DASHBOARD'>('ALL');
   const [showNewTaskForm, setShowNewTaskForm] = useState(false);
   const [showNewTopicForm, setShowNewTopicForm] = useState(false);
+  const [showNewUserForm, setShowNewUserForm] = useState(false);
+  const [userFormMsg, setUserFormMsg] = useState('');
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [copiedWhatsapp, setCopiedWhatsapp] = useState(false);
 
@@ -21,6 +23,9 @@ export default function DashboardClient({ initialTopics, initialTasks, users, cu
     let filtered = initialTasks;
     if (activeFilter === 'MY') {
       filtered = filtered.filter((t: any) => t.user_id === currentUser.userId);
+    } else if (typeof activeFilter === 'string' && activeFilter.startsWith('USER_')) {
+      const selectedUserId = parseInt(activeFilter.replace('USER_', ''), 10);
+      filtered = filtered.filter((t: any) => t.user_id === selectedUserId);
     } else if (typeof activeFilter === 'number') {
       filtered = filtered.filter((t: any) => t.topic_id === activeFilter);
     }
@@ -206,6 +211,29 @@ export default function DashboardClient({ initialTopics, initialTasks, users, cu
           </div>
         ))}
 
+        <div style={{ marginTop: '24px', marginBottom: '8px', padding: '0 24px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>חברי צוות</span>
+          <button 
+            onClick={() => setShowNewUserForm(true)}
+            style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', display: 'flex', alignItems: 'center', fontSize: '12px', fontWeight: 'bold' }}
+            title="הוסף חבר צוות"
+          >
+            + הוסף
+          </button>
+        </div>
+
+        {users.map((user: any) => (
+          <div 
+            key={`sidebar-user-${user.id}`}
+            className={`nav-item ${activeFilter === `USER_${user.id}` ? 'active' : ''}`}
+            onClick={() => setActiveFilter(`USER_${user.id}` as any)}
+            style={{ fontSize: '13px' }}
+          >
+            <User size={16} style={{ marginLeft: '12px', opacity: 0.7 }} />
+            {user.name}
+          </div>
+        ))}
+
         <div style={{ marginTop: '24px', marginBottom: '8px', padding: '0 24px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
           משאבים משותפים
         </div>
@@ -237,6 +265,7 @@ export default function DashboardClient({ initialTopics, initialTasks, users, cu
             {activeFilter === 'DASHBOARD' && 'דשבורד ודוחות פיקוד'}
             {activeFilter === 'ALL' && 'כל המשימות'}
             {activeFilter === 'MY' && 'המשימות שלי'}
+            {typeof activeFilter === 'string' && activeFilter.startsWith('USER_') && `משימות של ${users.find((u: any) => u.id === parseInt(activeFilter.replace('USER_', ''), 10))?.name || 'חבר צוות'}`}
             {typeof activeFilter === 'number' && initialTopics.find((t: any) => t.id === activeFilter)?.title}
           </h2>
           
@@ -256,6 +285,9 @@ export default function DashboardClient({ initialTopics, initialTasks, users, cu
               </>
             ) : (
               <>
+                <button className="btn btn-outline" onClick={() => setShowNewUserForm(true)} title="הוסף חבר צוות חדש">
+                  <UserPlus size={16} /> חבר צוות חדש
+                </button>
                 <button className="btn btn-outline" onClick={() => setShowNewTopicForm(true)}>
                   <Plus size={16} /> נושא חדש
                 </button>
@@ -268,6 +300,41 @@ export default function DashboardClient({ initialTopics, initialTasks, users, cu
         </div>
 
         <div className="content-area">
+          {/* New User Form */}
+          {showNewUserForm && (
+            <div className="task-card" style={{ marginBottom: '16px', border: '1px solid #1a73e8', backgroundColor: '#e8f0fe', flexDirection: 'column', alignItems: 'stretch' }}>
+              <div style={{ fontWeight: 600, fontSize: '15px', color: '#1a73e8', marginBottom: '8px' }}>
+                👤 הוספת חבר צוות חדש למערכת
+              </div>
+              <form action={async (formData) => {
+                const res = await createTeamMember(formData);
+                if (res?.error) {
+                  setUserFormMsg(res.error);
+                } else {
+                  setUserFormMsg('חבר הצוות נוסף בהצלחה!');
+                  setTimeout(() => {
+                    setShowNewUserForm(false);
+                    setUserFormMsg('');
+                  }, 1500);
+                }
+              }} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                  <input type="text" name="name" placeholder="שם מלא (לדוגמה: רפ&quot;ק יוסי כהן)" required />
+                  <input type="email" name="email" placeholder="אימייל להתחברות" required />
+                  <input type="text" name="password" defaultValue="123456" placeholder="סיסמה ראשונית (ברירת מחדל: 123456)" required />
+                </div>
+                {userFormMsg && (
+                  <div style={{ fontSize: '13px', color: userFormMsg.includes('בהצלחה') ? 'var(--success-color)' : 'var(--danger-color)', fontWeight: 500 }}>
+                    {userFormMsg}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                  <button type="button" className="btn btn-outline" onClick={() => { setShowNewUserForm(false); setUserFormMsg(''); }}>ביטול</button>
+                  <button type="submit" className="btn">הוסף חבר צוות</button>
+                </div>
+              </form>
+            </div>
+          )}
           {activeFilter === 'DASHBOARD' ? (
             <div className="dashboard-stats">
               {/* Executive Metrics Banner */}

@@ -38,19 +38,48 @@ export async function register(formData: FormData) {
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
+  let newUserId: number;
 
   try {
     const result = await db.execute({
       sql: 'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
       args: [name, email, hashedPassword]
     });
-    await createSession(Number(result.lastInsertRowid), email, name);
-    redirect('/');
+    newUserId = Number(result.lastInsertRowid);
+    await createSession(newUserId, email, name);
   } catch (err: any) {
-    if (err.message && err.message.includes('UNIQUE constraint failed')) {
+    if (err.message && (err.message.includes('UNIQUE') || err.message.includes('constraint'))) {
       return { error: 'משתמש עם אימייל זה כבר קיים' };
     }
-    return { error: 'שגיאה ביצירת משתמש' };
+    return { error: 'שגיאה ביצירת משתמש: ' + (err.message || '') };
+  }
+
+  redirect('/');
+}
+
+export async function createTeamMember(formData: FormData) {
+  const name = formData.get('name') as string;
+  const email = formData.get('email') as string;
+  const password = (formData.get('password') as string) || '123456';
+
+  if (!name || !email) {
+    return { error: 'חובה למלא שם ומייל' };
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  try {
+    await db.execute({
+      sql: 'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
+      args: [name, email, hashedPassword]
+    });
+    revalidatePath('/');
+    return { success: true };
+  } catch (err: any) {
+    if (err.message && (err.message.includes('UNIQUE') || err.message.includes('constraint'))) {
+      return { error: 'חבר צוות עם אימייל זה כבר קיים' };
+    }
+    return { error: 'שגיאה בהוספת חבר צוות' };
   }
 }
 
