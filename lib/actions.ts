@@ -117,13 +117,15 @@ export async function createTask(formData: FormData) {
   const topicId = formData.get('topicId') as string;
   const userId = formData.get('userId') as string;
   const driveLink = formData.get('driveLink') as string;
-  const status = formData.get('status') as string || 'TODO';
+  const priority = (formData.get('priority') as string) || 'MEDIUM';
+  const dueDate = (formData.get('dueDate') as string) || null;
+  const status = (formData.get('status') as string) || 'TODO';
   
   if (!title || !topicId) return { error: 'חובה למלא שם משימה ונושא' };
 
   await db.execute({
-    sql: 'INSERT INTO tasks (title, topic_id, user_id, drive_link, status) VALUES (?, ?, ?, ?, ?)',
-    args: [title, topicId, userId || null, driveLink || null, status]
+    sql: 'INSERT INTO tasks (title, topic_id, user_id, drive_link, priority, due_date, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    args: [title, topicId, userId || null, driveLink || null, priority, dueDate, status]
   });
   revalidatePath('/');
 }
@@ -142,12 +144,15 @@ export async function updateTask(id: number, formData: FormData) {
   const driveLink = formData.get('driveLink') as string;
   const topicId = formData.get('topicId') as string;
   const userId = formData.get('userId') as string;
+  const priority = (formData.get('priority') as string) || 'MEDIUM';
+  const dueDate = (formData.get('dueDate') as string) || null;
+  const progressLog = (formData.get('progressLog') as string) || null;
 
   if (!title || !topicId) return { error: 'חובה למלא שם משימה ונושא' };
 
   await db.execute({
-    sql: 'UPDATE tasks SET title = ?, description = ?, drive_link = ?, topic_id = ?, user_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-    args: [title, description || null, driveLink || null, topicId, userId || null, id]
+    sql: 'UPDATE tasks SET title = ?, description = ?, drive_link = ?, priority = ?, due_date = ?, progress_log = ?, topic_id = ?, user_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    args: [title, description || null, driveLink || null, priority, dueDate, progressLog, topicId, userId || null, id]
   });
   revalidatePath('/');
 }

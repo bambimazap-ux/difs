@@ -218,7 +218,76 @@ input:focus, textarea:focus, select:focus {
 .badge-todo { background-color: var(--bg-color); color: var(--text-secondary); border: 1px solid var(--border-color); }
 .badge-progress { background-color: #e8f0fe; color: var(--primary-color); }
 .badge-done { background-color: #e6f4ea; color: var(--success-color); }
-.badge-stuck { background-color: #fce8e6; color: var(--danger-color); }
+.badge-stuck { background-color: #fce8e6; color: var(--danger-color); font-weight: bold; }
+
+/* Priority Badges */
+.badge-priority-HIGH { background-color: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; font-weight: 600; }
+.badge-priority-MEDIUM { background-color: #fef7e0; color: #b06000; border: 1px solid #feefc3; }
+.badge-priority-LOW { background-color: #f1f3f4; color: #5f6368; border: 1px solid #dadce0; }
+
+/* Due Date Badges */
+.badge-date-overdue { background-color: #d93025; color: #ffffff; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+.badge-date-today { background-color: #e37400; color: #ffffff; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+.badge-date-future { background-color: #f1f3f4; color: #3c4043; display: inline-flex; align-items: center; gap: 4px; }
+
+/* Executive Report Styles */
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.report-card {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.report-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 12px;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.report-item {
+  padding: 10px 12px;
+  background: var(--bg-color);
+  border-radius: 8px;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metric-banner {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.metric-box {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+}
+
+.metric-box .num {
+  font-size: 28px;
+  font-weight: bold;
+  margin-top: 4px;
+}
 
 /* Auth forms */
 .auth-container {
