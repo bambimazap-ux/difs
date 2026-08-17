@@ -24,6 +24,10 @@ export async function login(formData: FormData) {
     return { error: 'אימייל או סיסמה שגויים' };
   }
 
+  if (!user.is_approved) {
+    return { error: 'המשתמש שלך עדיין לא אושר על ידי מנהל המערכת.' };
+  }
+
   await createSession(user.id as number, user.email as string, user.name as string);
   redirect('/');
 }
@@ -42,19 +46,16 @@ export async function register(formData: FormData) {
 
   try {
     const result = await db.execute({
-      sql: 'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
+      sql: 'INSERT INTO users (name, email, password, is_approved) VALUES (?, ?, ?, 0)',
       args: [name, email, hashedPassword]
     });
-    newUserId = Number(result.lastInsertRowid);
-    await createSession(newUserId, email, name);
+    return { success: true, message: 'החשבון נוצר! אנא המתן לאישור מנהל.' };
   } catch (err: any) {
     if (err.message && (err.message.includes('UNIQUE') || err.message.includes('constraint'))) {
       return { error: 'משתמש עם אימייל זה כבר קיים' };
     }
     return { error: 'שגיאה ביצירת משתמש: ' + (err.message || '') };
   }
-
-  redirect('/');
 }
 
 export async function createTeamMember(formData: FormData) {
@@ -70,7 +71,7 @@ export async function createTeamMember(formData: FormData) {
 
   try {
     await db.execute({
-      sql: 'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
+      sql: 'INSERT INTO users (name, email, password, is_approved) VALUES (?, ?, ?, 1)',
       args: [name, email, hashedPassword]
     });
     revalidatePath('/');
@@ -195,6 +196,22 @@ export async function deleteTask(id: number) {
 }
 
 export async function getUsers() {
-  const result = await db.execute('SELECT id, name, email FROM users');
+  const result = await db.execute('SELECT id, name, email, is_approved FROM users');
   return result.rows;
+}
+
+export async function approveUser(id: number) {
+  await db.execute({
+    sql: 'UPDATE users SET is_approved = 1 WHERE id = ?',
+    args: [id]
+  });
+  revalidatePath('/');
+}
+
+export async function rejectUser(id: number) {
+  await db.execute({
+    sql: 'DELETE FROM users WHERE id = ?',
+    args: [id]
+  });
+  revalidatePath('/');
 }

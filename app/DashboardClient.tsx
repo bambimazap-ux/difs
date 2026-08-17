@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { logout, createTopic, createTask, updateTaskStatus, deleteTask, updateTask, createTeamMember } from '@/lib/actions';
+import { logout, createTopic, createTask, updateTaskStatus, deleteTask, updateTask, createTeamMember, approveUser, rejectUser } from '@/lib/actions';
 import { 
   CheckCircle2, Circle, AlertCircle, Clock, 
   Plus, LogOut, LayoutDashboard, Folder, User, MessageCircle, BarChart, Edit2, Link, ExternalLink,
-  Calendar, AlertTriangle, Download, Copy, Check, Share2, UserPlus
+  Calendar, AlertTriangle, Download, Copy, Check, Share2, UserPlus, UserCheck, UserX
 } from 'lucide-react';
 
 export default function DashboardClient({ initialTopics, initialTasks, users, currentUser }: any) {
@@ -16,6 +16,9 @@ export default function DashboardClient({ initialTopics, initialTasks, users, cu
   const [userFormMsg, setUserFormMsg] = useState('');
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [copiedWhatsapp, setCopiedWhatsapp] = useState(false);
+
+  const approvedUsers = users.filter((u: any) => u.is_approved === 1);
+  const pendingUsers = users.filter((u: any) => u.is_approved === 0);
 
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -212,17 +215,17 @@ export default function DashboardClient({ initialTopics, initialTasks, users, cu
         ))}
 
         <div style={{ marginTop: '24px', marginBottom: '8px', padding: '0 24px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>חברי צוות</span>
+          <span>חברי צוות {pendingUsers.length > 0 && <span style={{ background: 'var(--danger-color)', color: 'white', padding: '2px 6px', borderRadius: '10px', fontSize: '10px', marginRight: '4px' }}>{pendingUsers.length} ממתינים</span>}</span>
           <button 
             onClick={() => setShowNewUserForm(true)}
             style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', display: 'flex', alignItems: 'center', fontSize: '12px', fontWeight: 'bold' }}
-            title="הוסף חבר צוות"
+            title="ניהול משתמשים"
           >
-            + הוסף
+            + ניהול
           </button>
         </div>
 
-        {users.map((user: any) => (
+        {approvedUsers.map((user: any) => (
           <div 
             key={`sidebar-user-${user.id}`}
             className={`nav-item ${activeFilter === `USER_${user.id}` ? 'active' : ''}`}
@@ -265,7 +268,7 @@ export default function DashboardClient({ initialTopics, initialTasks, users, cu
             {activeFilter === 'DASHBOARD' && 'דשבורד ודוחות פיקוד'}
             {activeFilter === 'ALL' && 'כל המשימות'}
             {activeFilter === 'MY' && 'המשימות שלי'}
-            {typeof activeFilter === 'string' && activeFilter.startsWith('USER_') && `משימות של ${users.find((u: any) => u.id === parseInt(activeFilter.replace('USER_', ''), 10))?.name || 'חבר צוות'}`}
+            {typeof activeFilter === 'string' && activeFilter.startsWith('USER_') && `משימות של ${approvedUsers.find((u: any) => u.id === parseInt(activeFilter.replace('USER_', ''), 10))?.name || 'חבר צוות'}`}
             {typeof activeFilter === 'number' && initialTopics.find((t: any) => t.id === activeFilter)?.title}
           </h2>
           
@@ -285,8 +288,8 @@ export default function DashboardClient({ initialTopics, initialTasks, users, cu
               </>
             ) : (
               <>
-                <button className="btn btn-outline" onClick={() => setShowNewUserForm(true)} title="הוסף חבר צוות חדש">
-                  <UserPlus size={16} /> חבר צוות חדש
+                <button className="btn btn-outline" onClick={() => setShowNewUserForm(true)} title="ניהול משתמשים והוספת חבר צוות" style={{ position: 'relative' }}>
+                  <UserPlus size={16} /> ניהול צוות {pendingUsers.length > 0 && <span style={{ position: 'absolute', top: '-5px', right: '-5px', background: 'var(--danger-color)', color: 'white', borderRadius: '50%', width: '16px', height: '16px', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{pendingUsers.length}</span>}
                 </button>
                 <button className="btn btn-outline" onClick={() => setShowNewTopicForm(true)}>
                   <Plus size={16} /> נושא חדש
@@ -300,11 +303,43 @@ export default function DashboardClient({ initialTopics, initialTasks, users, cu
         </div>
 
         <div className="content-area">
-          {/* New User Form */}
+          {/* New User Form & Approvals */}
           {showNewUserForm && (
             <div className="task-card" style={{ marginBottom: '16px', border: '1px solid #1a73e8', backgroundColor: '#e8f0fe', flexDirection: 'column', alignItems: 'stretch' }}>
+              
+              {pendingUsers.length > 0 && (
+                <div style={{ marginBottom: '24px', borderBottom: '1px solid #cce0ff', paddingBottom: '16px' }}>
+                  <div style={{ fontWeight: 600, fontSize: '15px', color: 'var(--danger-color)', marginBottom: '12px' }}>
+                    ⏳ משתמשים הממתינים לאישור ({pendingUsers.length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {pendingUsers.map((pUser: any) => (
+                      <div key={pUser.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', padding: '8px 12px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                        <div>
+                          <strong style={{ fontSize: '14px' }}>{pUser.name}</strong> <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>({pUser.email})</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button className="btn" style={{ background: 'var(--success-color)', display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '13px' }} onClick={async () => {
+                            await approveUser(pUser.id);
+                            const text = `היי ${pUser.name}, חשבונך בפלטפורמת הפיקוח והבקרה של שלדור אושר בהצלחה! תוכל להיכנס למערכת כאן: https://task-manager-difs.vercel.app/`;
+                            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                          }}>
+                            <UserCheck size={14} /> אשר ושלח עדכון WhatsApp
+                          </button>
+                          <button className="btn btn-outline" style={{ color: 'var(--danger-color)', borderColor: 'var(--danger-color)', padding: '6px 12px', fontSize: '13px' }} onClick={async () => {
+                            if(confirm('למחוק בקשת הרשמה זו לצמיתות?')) await rejectUser(pUser.id);
+                          }}>
+                            <UserX size={14} /> דחה ומחק
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div style={{ fontWeight: 600, fontSize: '15px', color: '#1a73e8', marginBottom: '8px' }}>
-                👤 הוספת חבר צוות חדש למערכת
+                👤 הוספת חבר צוות ידנית
               </div>
               <form action={async (formData) => {
                 const res = await createTeamMember(formData);
@@ -470,7 +505,7 @@ export default function DashboardClient({ initialTopics, initialTasks, users, cu
                 {/* Team Distribution */}
                 <div className="task-card" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
                   <h4 style={{ marginBottom: '16px' }}>עומס משימות לפי חבר צוות</h4>
-                  {users.map((user: any) => {
+                  {approvedUsers.map((user: any) => {
                     const userTasks = initialTasks.filter((t: any) => t.user_id === user.id);
                     const pendingTasks = userTasks.filter((t: any) => t.status !== 'DONE');
                     
@@ -521,7 +556,7 @@ export default function DashboardClient({ initialTopics, initialTasks, users, cu
                       
                       <select name="userId" defaultValue={currentUser.userId}>
                         <option value="">ללא שיוך</option>
-                        {users.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                        {approvedUsers.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
                       </select>
 
                       <select name="priority" defaultValue="MEDIUM">
@@ -567,7 +602,7 @@ export default function DashboardClient({ initialTopics, initialTasks, users, cu
                             
                             <select name="userId" defaultValue={task.user_id || ''}>
                               <option value="">ללא שיוך</option>
-                              {users.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                              {approvedUsers.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
                             </select>
 
                             <select name="priority" defaultValue={task.priority || 'MEDIUM'}>

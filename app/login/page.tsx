@@ -6,18 +6,22 @@ import { login, register } from '@/lib/actions';
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError('');
+    setSuccessMsg('');
     
     const formData = new FormData(e.currentTarget);
     const action = isLogin ? login : register;
     
-    const result = await action(formData);
+    const result = await action(formData) as any;
     
     if (result?.error) {
       setError(result.error);
+    } else if (result?.success && !isLogin) {
+      setSuccessMsg(result.message);
     }
   }
 
@@ -46,6 +50,7 @@ export default function LoginPage() {
           </div>
 
           {error && <div className="error-message">{error}</div>}
+          {successMsg && <div className="success-message" style={{ color: 'green', background: '#e6ffe6', padding: '10px', borderRadius: '4px', marginBottom: '10px', textAlign: 'center' }}>{successMsg}</div>}
 
           <button type="submit" className="btn" style={{ width: '100%', padding: '12px', fontSize: '16px' }}>
             {isLogin ? 'היכנס' : 'הירשם'}
