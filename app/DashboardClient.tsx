@@ -308,6 +308,33 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
               )}
             </div>
           </div>
+
+          {/* Quick Actions (Drive & WhatsApp) */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginLeft: '12px' }}>
+            {task.drive_link && (
+              <button 
+                type="button"
+                onClick={(e) => { e.stopPropagation(); window.open(task.drive_link, '_blank'); }}
+                title="פתיחת קבצים ב-Drive"
+                style={{ background: '#e8f0fe', border: '1px solid #d2e3fc', color: '#1a73e8', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '6px', borderRadius: '4px' }}
+              >
+                <Link size={16} />
+              </button>
+            )}
+            <button 
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                const text = `משימה: ${task.title}%0Aנושא: ${task.topic_title || 'ללא נושא'}%0Aאחראי: ${task.user_name || 'טרם שויך'}%0Aעדיפות: ${task.priority === 'HIGH' ? 'דחוף' : 'רגיל'}${task.due_date ? '%0Aיעד: ' + task.due_date : ''}${task.progress_log ? '%0Aסטטוס: ' + task.progress_log : ''}%0A%0Aלצפייה במשימה: https://difs.vercel.app/`;
+                window.open(`https://wa.me/?text=${text}`, '_blank');
+              }}
+              title="שתף ב-WhatsApp"
+              style={{ background: '#e6f4ea', border: '1px solid #ceead6', color: '#1e8e3e', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '6px', borderRadius: '4px' }}
+            >
+              <MessageCircle size={16} />
+            </button>
+          </div>
+
           <ChevronDown size={18} color="var(--text-secondary)" style={{ marginLeft: '8px' }} />
         </div>
       )
