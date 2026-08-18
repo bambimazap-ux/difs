@@ -1,5 +1,6 @@
-import { LayoutDashboard, Users, LogOut, CheckCircle2 } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, CheckCircle2, Download } from 'lucide-react';
 import { logout } from '@/lib/actions';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 
 export default function Sidebar({ 
   activeFilter, 
@@ -10,6 +11,7 @@ export default function Sidebar({
   setShowNewTopicForm,
   setShowNewUserForm
 }: any) {
+  const { isInstallable, installPWA } = usePWAInstall();
   return (
     <>
       <div className="drawer-overlay" onClick={() => {
@@ -61,6 +63,11 @@ export default function Sidebar({
               <li onClick={() => { setShowNewTopicForm(true); document.querySelector('.sidebar')?.classList.remove('mobile-open'); document.querySelector('.drawer-overlay')?.classList.remove('active'); }}>
                 נושא חדש
               </li>
+              {isInstallable && (
+                <li onClick={installPWA} style={{ color: 'var(--primary-color)', fontWeight: 'bold' }}>
+                  <Download size={20} /> התקן כאפליקציה
+                </li>
+              )}
             </ul>
         </div>
         
