@@ -44,15 +44,13 @@ export default function Sidebar({
             }}>
               <CheckCircle2 size={20} /> משימות שלי
             </li>
-            {currentUser.role === 'ADMIN' && (
-              <li className={activeFilter === 'USERS' ? 'active' : ''} onClick={() => {
-                  setActiveFilter('USERS');
-                  document.querySelector('.sidebar')?.classList.remove('mobile-open');
-                  document.querySelector('.drawer-overlay')?.classList.remove('active');
-              }}>
-                <Users size={20} /> ניהול משתמשים
-              </li>
-            )}
+            <li className={activeFilter === 'USERS' ? 'active' : ''} onClick={() => {
+                setActiveFilter('USERS');
+                document.querySelector('.sidebar')?.classList.remove('mobile-open');
+                document.querySelector('.drawer-overlay')?.classList.remove('active');
+            }}>
+              <Users size={20} /> ניהול משתמשים
+            </li>
           </ul>
         </div>
         
