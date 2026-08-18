@@ -60,6 +60,20 @@ const initDb = async () => {
         FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
       );
     `);
+
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task_id INTEGER NOT NULL,
+        user_id INTEGER,
+        action TEXT NOT NULL,
+        old_value TEXT,
+        new_value TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+      );
+    `);
   } catch (error) {
     console.error("Error initializing database:", error);
   }

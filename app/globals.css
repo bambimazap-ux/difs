@@ -12,6 +12,20 @@
   --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+[data-theme="dark"] {
+  --primary-color: #8ab4f8; /* Google Blue Light */
+  --primary-hover: #aecbfa;
+  --bg-color: #202124; /* Google Dark Background */
+  --surface-color: #292a2d; /* Google Dark Surface */
+  --card-bg: #292a2d;
+  --text-primary: #e8eaed; /* Light gray text */
+  --text-secondary: #9aa0a6;
+  --border-color: #3c4043;
+  --success-color: #81c995;
+  --danger-color: #f28b82;
+  --warning-color: #fdd663;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;

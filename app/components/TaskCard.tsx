@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { 
   CheckCircle2, Circle, AlertCircle, Clock, 
   Edit2, Link, Calendar, AlertTriangle, 
-  CheckSquare, Square, ChevronDown, ChevronUp, Plus, MessageCircle 
+  CheckSquare, Square, ChevronDown, ChevronUp, Plus, MessageCircle, History 
 } from 'lucide-react';
 import { updateTaskStatus, updateTask, createSubtask, updateSubtaskStatus, deleteSubtask } from '@/lib/actions';
 
@@ -39,6 +40,20 @@ export default function TaskCard({
   
   const taskSubtasks = initialSubtasks.filter((st: any) => st.task_id === task.id);
   const completedSubtasks = taskSubtasks.filter((st: any) => st.status === 'DONE').length;
+
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [showAuditLogs, setShowAuditLogs] = useState(false);
+
+  const fetchAuditLogs = async () => {
+    if (!showAuditLogs) {
+      try {
+        const { getTaskAuditLogs } = await import('@/lib/actions');
+        const logs = await getTaskAuditLogs(task.id);
+        setAuditLogs(logs);
+      } catch (err) {}
+    }
+    setShowAuditLogs(!showAuditLogs);
+  };
 
   if (editingTaskId === task.id) {
     return (
@@ -171,6 +186,49 @@ export default function TaskCard({
               <button type="button" onClick={() => setAddingSubtaskToTaskId(task.id)} style={{ background: '#f8f9fa', border: '1px dashed #ccc', color: 'var(--primary-color)', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '8px', width: '100%', justifyContent: 'center' }}>
                 <Plus size={16} /> הוסף תת-משימה
               </button>
+            </div>
+          )}
+        </div>
+        {/* Audit Logs */}
+        <div style={{ marginTop: '16px', borderTop: '1px solid #eee', paddingTop: '16px' }}>
+          <button 
+            type="button" 
+            onClick={(e) => { e.stopPropagation(); fetchAuditLogs(); }}
+            style={{ 
+              background: 'none', 
+              border: 'none', 
+              color: 'var(--text-secondary)', 
+              cursor: 'pointer', 
+              fontSize: '14px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              fontWeight: 600 
+            }}
+          >
+            <History size={16} /> 
+            {showAuditLogs ? 'הסתר היסטוריית פעולות' : 'הצג היסטוריית פעולות'}
+          </button>
+          
+          {showAuditLogs && (
+            <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto', paddingRight: '8px' }}>
+              {auditLogs.length === 0 ? (
+                <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>אין היסטוריית פעולות מוקלטת.</div>
+              ) : (
+                auditLogs.map((log, idx) => (
+                  <div key={idx} style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', background: 'var(--bg-color)', padding: '8px', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', marginBottom: '4px', fontSize: '12px' }}>
+                      <span>{log.user_name || 'מערכת'}</span>
+                      <span>{new Date(log.created_at).toLocaleString('he-IL')}</span>
+                    </div>
+                    <div>
+                      {log.action === 'CREATED' && <span>יצר/ה את המשימה.</span>}
+                      {log.action === 'STATUS_CHANGED' && <span>שינה/תה סטטוס מ-<b>{log.old_value}</b> ל-<b>{log.new_value}</b>.</span>}
+                      {log.action === 'UPDATED' && <span>ערך/ה את פרטי המשימה.</span>}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           )}
         </div>

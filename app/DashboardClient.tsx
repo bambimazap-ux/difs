@@ -43,7 +43,24 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
   const [showFabMenu, setShowFabMenu] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'OPEN' | 'DONE' | 'ALL'>('OPEN');
   const [isNewTopic, setIsNewTopic] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
+  // Initialize theme from localStorage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark';
+    if (savedTheme) {
+      setTheme(savedTheme);
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+  };
   const approvedUsers = users.filter((u: any) => u.is_approved === 1);
   const pendingUsers = users.filter((u: any) => u.is_approved === 0);
 
@@ -59,6 +76,15 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
     } else if (typeof activeFilter === 'number') {
       filtered = filtered.filter((t: any) => t.topic_id === activeFilter);
     }
+    
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter((t: any) => 
+        (t.title && t.title.toLowerCase().includes(q)) || 
+        (t.description && t.description.toLowerCase().includes(q))
+      );
+    }
+
     return filtered;
   };
 
@@ -124,7 +150,33 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
             {typeof activeFilter === 'number' && initialTopics.find((t: any) => t.id === activeFilter)?.title}
           </h2>
           
-          <div className="header-actions" style={{ display: 'flex', gap: '8px' }}>
+          <div className="header-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flex: '1 1 auto', minWidth: '200px' }}>
+              <input 
+                type="text" 
+                placeholder="חיפוש משימות..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ 
+                  width: '100%', 
+                  padding: '8px 16px 8px 36px', 
+                  borderRadius: '24px', 
+                  border: '1px solid var(--border-color)',
+                  background: 'var(--surface-color)',
+                  color: 'var(--text-primary)'
+                }}
+              />
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </div>
+
+            <button className="btn btn-outline" onClick={toggleTheme} title="שינוי ערכת נושא" style={{ padding: '8px', borderRadius: '50%' }}>
+              {theme === 'light' ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+              )}
+            </button>
+
             {activeFilter === 'DASHBOARD' ? (
               <>
                 <button className="btn btn-outline" onClick={handleExportCSV} title="ייצוא לאקסל">

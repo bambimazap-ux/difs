@@ -170,22 +170,44 @@ export async function createTask(formData: FormData) {
     return { error: 'חובה לבחור נושא' };
   }
 
-  await db.execute({
+  const res = await db.execute({
     sql: 'INSERT INTO tasks (title, topic_id, user_id, drive_link, priority, due_date, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
     args: [title, topicId, userId || null, driveLink || null, priority, dueDate, status]
   });
+  
+  const taskId = res.lastInsertRowid!.toString();
+  const session = await getSession();
+  
+  await db.execute({
+    sql: 'INSERT INTO audit_logs (task_id, user_id, action, new_value) VALUES (?, ?, ?, ?)',
+    args: [taskId, (session?.userId as any) || null, 'CREATED', title]
+  });
+  
   revalidatePath('/');
 }
 
 export async function updateTaskStatus(id: number, status: string) {
+  const session = await getSession();
+  const oldTaskRes = await db.execute({ sql: 'SELECT status FROM tasks WHERE id = ?', args: [id] });
+  const oldStatus = oldTaskRes.rows[0]?.status as string;
+
   await db.execute({
     sql: 'UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
     args: [status, id]
   });
+  
+  if (oldStatus !== status) {
+    await db.execute({
+      sql: 'INSERT INTO audit_logs (task_id, user_id, action, old_value, new_value) VALUES (?, ?, ?, ?, ?)',
+      args: [id, (session?.userId as any) || null, 'STATUS_CHANGED', oldStatus, status]
+    });
+  }
+  
   revalidatePath('/');
 }
 
 export async function updateTask(id: number, formData: FormData) {
+  const session = await getSession();
   const title = formData.get('title') as string;
   const description = formData.get('description') as string;
   const driveLink = formData.get('driveLink') as string;
@@ -201,6 +223,12 @@ export async function updateTask(id: number, formData: FormData) {
     sql: 'UPDATE tasks SET title = ?, description = ?, drive_link = ?, priority = ?, due_date = ?, progress_log = ?, topic_id = ?, user_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
     args: [title, description || null, driveLink || null, priority, dueDate, progressLog, topicId, userId || null, id]
   });
+  
+  await db.execute({
+    sql: 'INSERT INTO audit_logs (task_id, user_id, action, new_value) VALUES (?, ?, ?, ?)',
+    args: [id, (session?.userId as any) || null, 'UPDATED', 'פרטי משימה עודכנו']
+  });
+  
   revalidatePath('/');
 }
 
@@ -288,4 +316,12 @@ export async function deleteSubtask(subtaskId: number) {
     args: [subtaskId]
   });
   revalidatePath('/');
+}
+
+export async function getTaskAuditLogs(taskId: number) {
+  const result = await db.execute({
+    sql: "SELECT a.*, u.name as user_name FROM audit_logs a LEFT JOIN users u ON a.user_id = u.id WHERE a.task_id = ? ORDER BY a.created_at DESC",
+    args: [taskId]
+  });
+  return result.rows;
 }
