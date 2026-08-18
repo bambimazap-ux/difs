@@ -7,12 +7,13 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 export async function login(formData: FormData) {
-  const email = formData.get('email') as string;
+  const emailRaw = formData.get('email') as string;
   const password = formData.get('password') as string;
-
-  if (!email || !password) {
+  
+  if (!emailRaw || !password) {
     return { error: 'נא להזין אימייל וסיסמה' };
   }
+  const email = emailRaw.toLowerCase().trim();
 
   const result = await db.execute({
     sql: 'SELECT * FROM users WHERE email = ?',
@@ -34,12 +35,13 @@ export async function login(formData: FormData) {
 
 export async function register(formData: FormData) {
   const name = formData.get('name') as string;
-  const email = formData.get('email') as string;
+  const emailRaw = formData.get('email') as string;
   const password = formData.get('password') as string;
 
-  if (!name || !email || !password) {
+  if (!name || !emailRaw || !password) {
     return { error: 'נא למלא את כל השדות' };
   }
+  const email = emailRaw.toLowerCase().trim();
 
   const hashedPassword = await bcrypt.hash(password, 10);
   let newUserId: number;
@@ -59,13 +61,17 @@ export async function register(formData: FormData) {
 }
 
 export async function createTeamMember(formData: FormData) {
+  const session = await getSession();
+  if (!session) return { error: 'לא מורשה' };
+
   const name = formData.get('name') as string;
-  const email = formData.get('email') as string;
+  const emailRaw = formData.get('email') as string;
   const password = (formData.get('password') as string) || '123456';
 
-  if (!name || !email) {
+  if (!name || !emailRaw) {
     return { error: 'חובה למלא שם ומייל' };
   }
+  const email = emailRaw.toLowerCase().trim();
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -200,18 +206,36 @@ export async function getUsers() {
   return result.rows;
 }
 
-export async function approveUser(id: number) {
+export async function approveUser(userId: number) {
+  const session = await getSession();
+  if (!session) throw new Error('Unauthorized');
+  
   await db.execute({
     sql: 'UPDATE users SET is_approved = 1 WHERE id = ?',
-    args: [id]
+    args: [userId]
   });
   revalidatePath('/');
 }
 
-export async function rejectUser(id: number) {
+export async function rejectUser(userId: number) {
+  const session = await getSession();
+  if (!session) throw new Error('Unauthorized');
+
   await db.execute({
     sql: 'DELETE FROM users WHERE id = ?',
-    args: [id]
+    args: [userId]
+  });
+  revalidatePath('/');
+}
+
+export async function revokeUserAccess(userId: number) {
+  const session = await getSession();
+  if (!session) throw new Error('Unauthorized');
+  if (session.userId === userId) throw new Error('You cannot revoke your own access');
+
+  await db.execute({
+    sql: 'UPDATE users SET is_approved = 0 WHERE id = ?',
+    args: [userId]
   });
   revalidatePath('/');
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { logout, createTopic, createTask, updateTaskStatus, deleteTask, updateTask, createTeamMember, approveUser, rejectUser } from '@/lib/actions';
+import { logout, createTopic, createTask, updateTaskStatus, deleteTask, updateTask, createTeamMember, approveUser, rejectUser, revokeUserAccess } from '@/lib/actions';
 import { 
   CheckCircle2, Circle, AlertCircle, Clock, 
   Plus, LogOut, LayoutDashboard, Folder, User, MessageCircle, BarChart, Edit2, Link, ExternalLink,
@@ -337,6 +337,38 @@ export default function DashboardClient({ initialTopics, initialTasks, users, cu
                   </div>
                 </div>
               )}
+
+              {/* Manage Existing Users */}
+              <div style={{ marginBottom: '24px', borderBottom: '1px solid #cce0ff', paddingBottom: '16px' }}>
+                <div style={{ fontWeight: 600, fontSize: '15px', color: '#1a73e8', marginBottom: '12px' }}>
+                  👥 ניהול משתמשים קיימים ({approvedUsers.length})
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
+                  {approvedUsers.map((aUser: any) => (
+                    <div key={aUser.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', padding: '8px 12px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                      <div>
+                        <strong style={{ fontSize: '14px' }}>{aUser.name}</strong> <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>({aUser.email})</span>
+                        {aUser.id === currentUser.userId && <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--success-color)', fontWeight: 'bold' }}>(אתה)</span>}
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {aUser.id !== currentUser.userId && (
+                          <button className="btn btn-outline" style={{ color: 'var(--danger-color)', borderColor: 'var(--danger-color)', padding: '6px 12px', fontSize: '13px' }} onClick={async () => {
+                            if(confirm(`האם אתה בטוח שברצונך לחסום את ${aUser.name}? המשתמש ינותק מהמערכת באופן מיידי.`)) {
+                              try {
+                                await revokeUserAccess(aUser.id);
+                              } catch(e: any) {
+                                alert(e.message);
+                              }
+                            }
+                          }}>
+                            <UserX size={14} /> חסום והסר גישה
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               <div style={{ fontWeight: 600, fontSize: '15px', color: '#1a73e8', marginBottom: '8px' }}>
                 👤 הוספת חבר צוות ידנית
