@@ -1,6 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+
+import { exportToCSV, generateExecutiveWhatsappMsg } from '@/lib/utils';
+import TaskCard from './components/TaskCard';
+import TopicGrid from './components/TopicGrid';
+import MobileNav from './components/MobileNav';
+import Sidebar from './components/Sidebar';
+
 import { useRouter } from 'next/navigation';
 import { logout, createTopic, createTask, updateTaskStatus, deleteTask, updateTask, createTeamMember, approveUser, rejectUser, revokeUserAccess, createSubtask, updateSubtaskStatus, deleteSubtask } from '@/lib/actions';
 import { 
@@ -10,14 +17,17 @@ import {
   Home, Users, ChevronDown, ChevronUp, Menu
 } from 'lucide-react';
 
+
 export default function DashboardClient({ initialTopics, initialTasks, initialSubtasks = [], users, currentUser }: any) {
   const router = useRouter();
 
-  // Auto-refresh data every 5 seconds to sync between users
+  // Optimized Polling: Only refresh if the user is actively viewing the tab (Visibility API)
   useEffect(() => {
     const interval = setInterval(() => {
-      router.refresh();
-    }, 5000);
+      if (document.visibilityState === 'visible') {
+        router.refresh();
+      }
+    }, 15000);
     return () => clearInterval(interval);
   }, [router]);
 
@@ -32,6 +42,7 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
   const [copiedWhatsapp, setCopiedWhatsapp] = useState(false);
   const [showFabMenu, setShowFabMenu] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'OPEN' | 'DONE' | 'ALL'>('OPEN');
+  const [isNewTopic, setIsNewTopic] = useState(false);
 
   const approvedUsers = users.filter((u: any) => u.is_approved === 1);
   const pendingUsers = users.filter((u: any) => u.is_approved === 0);
@@ -53,63 +64,12 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
 
   const tasks = getFilteredTasks();
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'TODO': return <span className="badge badge-todo">לביצוע</span>;
-      case 'IN_PROGRESS': return <span className="badge badge-progress">בתהליך</span>;
-      case 'DONE': return <span className="badge badge-done">בוצע</span>;
-      case 'STUCK': return <span className="badge badge-stuck">תקוע</span>;
-      default: return null;
-    }
-  };
-
   const getPriorityBadge = (priority: string = 'MEDIUM') => {
     switch (priority) {
       case 'HIGH': return <span className="badge badge-priority-HIGH">🔴 דחוף</span>;
       case 'MEDIUM': return <span className="badge badge-priority-MEDIUM">🟡 רגיל</span>;
       case 'LOW': return <span className="badge badge-priority-LOW">⚪ נמוך</span>;
       default: return <span className="badge badge-priority-MEDIUM">🟡 רגיל</span>;
-    }
-  };
-
-  const getDueDateBadge = (dueDate: string | null, status: string) => {
-    if (!dueDate) return null;
-    if (status === 'DONE') {
-      return (
-        <span className="badge badge-date-future" style={{ opacity: 0.7 }}>
-          <Calendar size={12} /> {dueDate}
-        </span>
-      );
-    }
-
-    if (dueDate < todayStr) {
-      return (
-        <span className="badge badge-date-overdue">
-          <AlertTriangle size={12} /> באיחור ({dueDate})
-        </span>
-      );
-    } else if (dueDate === todayStr) {
-      return (
-        <span className="badge badge-date-today">
-          <Clock size={12} /> יעד: היום
-        </span>
-      );
-    } else {
-      return (
-        <span className="badge badge-date-future">
-          <Calendar size={12} /> {dueDate}
-        </span>
-      );
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'TODO': return <Circle size={18} color="var(--text-secondary)" />;
-      case 'IN_PROGRESS': return <Clock size={18} color="var(--primary-color)" />;
-      case 'DONE': return <CheckCircle2 size={18} color="var(--success-color)" />;
-      case 'STUCK': return <AlertCircle size={18} color="var(--danger-color)" />;
-      default: return <Circle size={18} />;
     }
   };
 
@@ -120,411 +80,39 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
   const urgentTasks = initialTasks.filter((t: any) => t.status !== 'DONE' && t.priority === 'HIGH');
   const inProgressTasks = initialTasks.filter((t: any) => t.status === 'IN_PROGRESS' || t.status === 'TODO');
 
-  const exportToCSV = () => {
-    const headers = ['מספר', 'משימה', 'נושא', 'אחראי', 'סטטוס', 'עדיפות', 'תאריך יעד', 'הערת התקדמות', 'קישור דרייב'];
-    const rows = initialTasks.map((t: any) => [
-      t.id,
-      `"${(t.title || '').replace(/"/g, '""')}"`,
-      `"${(t.topic_title || '').replace(/"/g, '""')}"`,
-      `"${(t.user_name || 'טרם שויך').replace(/"/g, '""')}"`,
-      t.status === 'DONE' ? 'בוצע' : t.status === 'IN_PROGRESS' ? 'בתהליך' : t.status === 'STUCK' ? 'תקוע' : 'לביצוע',
-      t.priority === 'HIGH' ? 'דחוף' : t.priority === 'LOW' ? 'נמוך' : 'רגיל',
-      t.due_date || '',
-      `"${(t.progress_log || t.description || '').replace(/"/g, '""')}"`,
-      t.drive_link || ''
-    ]);
-
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((e: any[]) => e.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `shaldor_tasks_report_${todayStr}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleExportCSV = () => {
+    exportToCSV(initialTasks, todayStr);
   };
 
-  const copyExecutiveWhatsapp = () => {
-    let msg = `📊 *סטטוס שבועי - ניהול משימות שלדור*\n`;
-    msg += `תאריך: ${todayStr}\n\n`;
-
-    msg += `✅ *מה הושלם לאחרונה:*\n`;
-    if (completedTasks.length === 0) msg += `אין משימות שסומנו כהושלמו.\n`;
-    else {
-      completedTasks.slice(0, 5).forEach((t: any) => {
-        msg += `• ${t.title} (${t.user_name || 'ללא שיוך'})\n`;
-      });
-    }
-
-    msg += `\n⚠️ *צווארי בקבוק וחריגות:*\n`;
-    const issues = [...stuckTasks, ...overdueTasks.filter((o: any) => !stuckTasks.some((s: any) => s.id === o.id))];
-    if (issues.length === 0) msg += `אין חריגות או משימות תקועות 🎉\n`;
-    else {
-      issues.forEach((t: any) => {
-        msg += `• ${t.title} [${t.status === 'STUCK' ? 'תקוע' : 'באיחור'}] - אחראי: ${t.user_name || 'לא שויך'}\n`;
-      });
-    }
-
-    msg += `\n🎯 *יעדים מרכזיים לשבוע הבא:*\n`;
-    const focusTasks = urgentTasks.length > 0 ? urgentTasks : inProgressTasks.slice(0, 5);
-    if (focusTasks.length === 0) msg += `אין משימות דחופות פתוחות.\n`;
-    else {
-      focusTasks.forEach((t: any) => {
-        msg += `• ${t.title} (${t.user_name || 'לא שויך'})${t.due_date ? ' - יעד: ' + t.due_date : ''}\n`;
-      });
-    }
-
-    msg += `\n🔗 *לכניסה למערכת:* https://difs.vercel.app/\n`;
-
+  const handleCopyWhatsapp = () => {
+    const msg = generateExecutiveWhatsappMsg(initialTasks, todayStr);
     navigator.clipboard.writeText(msg);
     setCopiedWhatsapp(true);
     setTimeout(() => setCopiedWhatsapp(false), 3000);
   };
 
-  const renderTask = (task: any) => {
-    const taskSubtasks = initialSubtasks.filter((st: any) => st.task_id === task.id);
-    const completedSubtasks = taskSubtasks.filter((st: any) => st.status === 'DONE').length;
-    
-    return (
-      editingTaskId === task.id ? (
-        <div key={task.id} id={`task-${task.id}`} className="task-card" style={{ marginBottom: '16px', border: '1px solid var(--primary-color)', flexWrap: 'wrap', backgroundColor: '#f8f9fa' }}>
-          <form action={async (formData) => {
-            await updateTask(task.id, formData);
-            setEditingTaskId(null);
-          }} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <input type="text" name="title" defaultValue={task.title} required placeholder="תיאור המשימה..." />
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px' }}>
-              <select name="topicId" required defaultValue={task.topic_id}>
-                <option value="" disabled>בחר נושא</option>
-                {initialTopics.map((t: any) => <option key={t.id} value={t.id}>{t.title}</option>)}
-              </select>
-              
-              <select name="userId" defaultValue={task.user_id || ''}>
-                <option value="">ללא שיוך</option>
-                {approvedUsers.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
-              </select>
-
-              <select name="priority" defaultValue={task.priority || 'MEDIUM'}>
-                <option value="HIGH">🔴 עדיפות: דחוף</option>
-                <option value="MEDIUM">🟡 עדיפות: רגיל</option>
-                <option value="LOW">⚪ עדיפות: נמוך</option>
-              </select>
-
-              <input type="date" name="dueDate" defaultValue={task.due_date || ''} />
-            </div>
-
-            <textarea name="description" placeholder="הערות או תיאור מורחב..." defaultValue={task.description} rows={2}></textarea>
-            <textarea name="progressLog" placeholder="הערת סטטוס והתקדמות שוטפת (לדוגמה: 16/08 בוצעו 4 ראיונות מתוך 10)..." defaultValue={task.progress_log} rows={2}></textarea>
-            <input type="url" name="driveLink" defaultValue={task.drive_link} placeholder="קישור לדרייב (אופציונלי)" />
-
-            {/* Subtasks (רמה ג') */}
-            <div style={{ marginTop: '12px', borderTop: '1px solid #ccc', paddingTop: '12px' }}>
-              <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '8px', color: 'var(--primary-color)' }}>
-                תת-משימות (צ'קליסט)
-              </div>
-              {taskSubtasks.map((st: any) => (
-                <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
-                  <div style={{ cursor: 'pointer', color: st.status === 'DONE' ? 'var(--success-color)' : 'var(--text-secondary)' }} onClick={() => updateSubtaskStatus(st.id, st.status === 'DONE' ? 'TODO' : 'DONE')}>
-                    {st.status === 'DONE' ? <CheckSquare size={16} /> : <Square size={16} />}
-                  </div>
-                  <div style={{ fontSize: '13px', flex: 1, textDecoration: st.status === 'DONE' ? 'line-through' : 'none', color: st.status === 'DONE' ? 'var(--text-secondary)' : 'inherit' }}>
-                    {st.title}
-                  </div>
-                  <button type="button" onClick={() => { if(confirm('למחוק תת-משימה זו?')) deleteSubtask(st.id) }} style={{ background: 'none', border: 'none', color: '#ff6b6b', cursor: 'pointer', fontSize: '12px' }}>
-                    מחק
-                  </button>
-                </div>
-              ))}
-                
-              {addingSubtaskToTaskId === task.id ? (
-                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                  <input type="text" id={`new-subtask-${task.id}`} autoFocus placeholder="תיאור תת-משימה..." style={{ flex: 1, padding: '4px 8px', fontSize: '13px', height: '28px' }} required />
-                  <button type="button" className="btn" style={{ padding: '4px 12px', fontSize: '12px', height: '28px' }} onClick={async () => {
-                    const input = document.getElementById(`new-subtask-${task.id}`) as HTMLInputElement;
-                    if (input && input.value) {
-                      await createSubtask(task.id, input.value);
-                      setAddingSubtaskToTaskId(null);
-                    }
-                  }}>שמור</button>
-                  <button type="button" className="btn btn-outline" style={{ padding: '4px 12px', fontSize: '12px', height: '28px' }} onClick={() => setAddingSubtaskToTaskId(null)}>ביטול</button>
-                </div>
-              ) : (
-                <div style={{ marginTop: '8px' }}>
-                  <button type="button" onClick={() => setAddingSubtaskToTaskId(task.id)} style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Plus size={14} /> הוסף תת-משימה (צ'קליסט)
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '16px', borderTop: '1px solid #ccc', paddingTop: '12px' }}>
-              <button type="button" className="btn btn-outline" style={{ color: 'var(--danger-color)', borderColor: 'var(--danger-color)' }} onClick={() => { if(confirm('למחוק משימה זו?')) deleteTask(task.id) }}>
-                מחק משימה
-              </button>
-              <button type="button" className="btn btn-outline" onClick={() => setEditingTaskId(null)}>ביטול עריכה</button>
-              <button type="submit" className="btn">שמור שינויים</button>
-            </div>
-          </form>
-        </div>
-      ) : (
-        <div 
-          key={task.id} 
-          id={`task-${task.id}`} 
-          className="task-card minimal-card" 
-          onClick={() => setEditingTaskId(task.id)}
-          style={{ cursor: 'pointer', padding: '12px', display: 'flex', alignItems: 'center' }}
-        >
-          <div 
-            className="status-toggle-btn"
-            style={{ cursor: 'pointer', marginRight: '12px', display: 'flex', alignItems: 'center' }} 
-            onClick={(e) => {
-              e.stopPropagation();
-              updateTaskStatus(task.id, task.status === 'DONE' ? 'TODO' : 'DONE');
-            }}
-          >
-            {getStatusIcon(task.status)}
-          </div>
-          
-          <div className="task-content" style={{ flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div className="task-title" style={{ margin: 0, textDecoration: task.status === 'DONE' ? 'line-through' : 'none', color: task.status === 'DONE' ? 'var(--text-secondary)' : 'inherit', fontSize: '15px' }}>
-                {task.title}
-              </div>
-            </div>
-            <div className="task-meta" style={{ marginTop: '4px', fontSize: '12px' }}>
-              <span style={{ color: 'var(--primary-color)', fontWeight: 500 }}>{task.topic_title}</span>
-              <span>•</span>
-              <span>{task.user_name || 'לא שויך'}</span>
-              <span>•</span>
-              {getPriorityBadge(task.priority)}
-              {taskSubtasks.length > 0 && (
-                 <span style={{ marginLeft: '8px', color: '#666', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                   <CheckSquare size={12} /> {completedSubtasks}/{taskSubtasks.length}
-                 </span>
-              )}
-              {task.progress_log && (
-                 <span style={{ marginLeft: '8px', color: '#666' }}>({task.progress_log})</span>
-              )}
-            </div>
-          </div>
-
-          {/* Quick Actions (Drive & WhatsApp) */}
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginLeft: '12px' }}>
-            {task.drive_link && (
-              <button 
-                type="button"
-                onClick={(e) => { e.stopPropagation(); window.open(task.drive_link, '_blank'); }}
-                title="פתיחת קבצים ב-Drive"
-                style={{ background: '#e8f0fe', border: '1px solid #d2e3fc', color: '#1a73e8', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '6px', borderRadius: '4px' }}
-              >
-                <Link size={16} />
-              </button>
-            )}
-            <button 
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                const text = `משימה: ${task.title}%0Aנושא: ${task.topic_title || 'ללא נושא'}%0Aאחראי: ${task.user_name || 'טרם שויך'}%0Aעדיפות: ${task.priority === 'HIGH' ? 'דחוף' : 'רגיל'}${task.due_date ? '%0Aיעד: ' + task.due_date : ''}${task.progress_log ? '%0Aסטטוס: ' + task.progress_log : ''}%0A%0Aלצפייה במשימה: https://difs.vercel.app/`;
-                window.open(`https://wa.me/?text=${text}`, '_blank');
-              }}
-              title="שתף ב-WhatsApp"
-              style={{ background: '#e6f4ea', border: '1px solid #ceead6', color: '#1e8e3e', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '6px', borderRadius: '4px' }}
-            >
-              <MessageCircle size={16} />
-            </button>
-          </div>
-
-          <ChevronDown size={18} color="var(--text-secondary)" style={{ marginLeft: '8px' }} />
-        </div>
-      )
-    );
-  };
 
   return (
     <div className="app-container">
       {/* Sidebar */}
-      <div className="sidebar">
-        <div className="sidebar-header">
-          <div className="sidebar-title">ניהול משימות שלדור</div>
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            שלום, {currentUser.name}
-          </div>
-        </div>
+      <Sidebar 
+        activeFilter={activeFilter} 
+        setActiveFilter={setActiveFilter} 
+        initialTopics={initialTopics} 
+        users={users} 
+        currentUser={currentUser} 
+        setShowNewTopicForm={setShowNewTopicForm}
+        setShowNewUserForm={setShowNewUserForm}
+      />
 
-        <div 
-          className={`nav-item ${activeFilter === 'HOME' ? 'active' : ''}`}
-          onClick={() => setActiveFilter('HOME')}
-        >
-          <Home size={18} style={{ marginLeft: '12px' }} />
-          מסך הבית (נושאים)
-        </div>
-        
-        <div 
-          className={`nav-item ${activeFilter === 'MY' ? 'active' : ''}`}
-          onClick={() => setActiveFilter('MY')}
-        >
-          <User size={18} style={{ marginLeft: '12px' }} />
-          המשימות שלי
-        </div>
+      <MobileNav 
+        activeFilter={activeFilter} 
+        setActiveFilter={setActiveFilter} 
+        setExpandedTaskId={setExpandedTaskId} 
+        setShowNewTaskForm={setShowNewTaskForm} 
+        setShowNewTopicForm={setShowNewTopicForm}
+      />
 
-        <div 
-          className={`nav-item ${activeFilter === 'USERS' ? 'active' : ''}`}
-          onClick={() => setActiveFilter('USERS')}
-        >
-          <Users size={18} style={{ marginLeft: '12px' }} />
-          ניהול צוות
-        </div>
-
-        <div style={{ marginTop: '24px', marginBottom: '8px', padding: '0 24px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-          נושאים
-        </div>
-
-        {initialTopics.map((topic: any) => {
-          const isTopicActive = activeFilter === topic.id;
-          const topicTasks = initialTasks.filter((t: any) => t.topic_id === topic.id);
-          
-          return (
-            <div key={topic.id}>
-              <div 
-                className={`nav-item ${isTopicActive ? 'active' : ''}`}
-                onClick={() => setActiveFilter(topic.id)}
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <Folder size={18} style={{ marginLeft: '12px' }} />
-                  {topic.title}
-                </div>
-                {topicTasks.length > 0 && (
-                  <div style={{ fontSize: '11px', background: isTopicActive ? 'rgba(255,255,255,0.2)' : '#e0e0e0', padding: '2px 6px', borderRadius: '10px' }}>
-                    {topicTasks.length}
-                  </div>
-                )}
-              </div>
-              
-              {/* Show Tasks under the topic if it's active */}
-              {isTopicActive && topicTasks.length > 0 && (
-                <div style={{ paddingRight: '40px', paddingLeft: '16px', marginBottom: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  {topicTasks.map((t: any) => (
-                    <div 
-                      key={t.id} 
-                      style={{ 
-                        fontSize: '12px', 
-                        color: t.status === 'DONE' ? 'var(--text-secondary)' : 'var(--text-primary)',
-                        textDecoration: t.status === 'DONE' ? 'line-through' : 'none',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        cursor: 'pointer',
-                        padding: '4px 0'
-                      }}
-                      title={t.title}
-                      onClick={() => {
-                        // Scroll to the task in the main view
-                        const el = document.getElementById(`task-${t.id}`);
-                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      }}
-                    >
-                      • {t.title}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        <div style={{ marginTop: '24px', marginBottom: '8px', padding: '0 24px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>חברי צוות {pendingUsers.length > 0 && <span style={{ background: 'var(--danger-color)', color: 'white', padding: '2px 6px', borderRadius: '10px', fontSize: '10px', marginRight: '4px' }}>{pendingUsers.length} ממתינים</span>}</span>
-          <button 
-            onClick={() => setShowNewUserForm(true)}
-            style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', display: 'flex', alignItems: 'center', fontSize: '12px', fontWeight: 'bold' }}
-            title="ניהול משתמשים"
-          >
-            + ניהול
-          </button>
-        </div>
-
-        {approvedUsers.map((user: any) => (
-          <div 
-            key={`sidebar-user-${user.id}`}
-            className={`nav-item ${activeFilter === `USER_${user.id}` ? 'active' : ''}`}
-            onClick={() => setActiveFilter(`USER_${user.id}` as any)}
-            style={{ fontSize: '13px' }}
-          >
-            <User size={16} style={{ marginLeft: '12px', opacity: 0.7 }} />
-            {user.name}
-          </div>
-        ))}
-
-        <div style={{ marginTop: '24px', marginBottom: '8px', padding: '0 24px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-          משאבים משותפים
-        </div>
-        <a 
-          href="https://drive.google.com/drive/folders/1NMq5a8InOdfhupnxYf77byoRdmzxJd8B?usp=sharing"
-          target="_blank"
-          rel="noreferrer"
-          className="nav-item"
-          style={{ textDecoration: 'none', color: 'inherit' }}
-        >
-          <ExternalLink size={18} style={{ marginLeft: '12px', color: '#1fa463' }} />
-          כונן משותף (Drive)
-        </a>
-
-        <div 
-          className="nav-item" 
-          style={{ marginTop: 'auto', color: 'var(--danger-color)' }}
-          onClick={() => logout()}
-        >
-          <LogOut size={18} style={{ marginLeft: '12px' }} />
-          התנתק
-        </div>
-      </div>
-
-      <div 
-        className="drawer-overlay" 
-        onClick={() => {
-          document.querySelector('.sidebar')?.classList.remove('mobile-open');
-          document.querySelector('.drawer-overlay')?.classList.remove('active');
-        }}
-      ></div>
-
-      {/* --- Mobile Bottom Navigation --- */}
-      <div className="mobile-bottom-nav">
-        <div className={`nav-icon ${activeFilter === 'HOME_TOPICS' ? 'active' : ''}`} onClick={() => {
-            setActiveFilter('HOME_TOPICS');
-            setExpandedTaskId(null);
-        }}>
-          <Home size={24} />
-          <span>בית</span>
-        </div>
-        <div className={`nav-icon ${activeFilter === 'DASHBOARD' ? 'active' : ''}`} onClick={() => setActiveFilter('DASHBOARD')}>
-          <BarChart size={24} />
-          <span>דשבורד</span>
-        </div>
-        
-        <div className="fab-container">
-          <button className="fab-button" onClick={() => setShowNewTaskForm(true)}>
-            <Plus size={28} color="white" />
-          </button>
-        </div>
-
-        <div className={`nav-icon ${activeFilter === 'MY' ? 'active' : ''}`} onClick={() => setActiveFilter('MY')}>
-          <User size={24} />
-          <span>שלי</span>
-        </div>
-        {/* Toggle Sidebar/Drawer for Topics & Settings */}
-        <div className="nav-icon" onClick={() => {
-          document.querySelector('.sidebar')?.classList.toggle('mobile-open');
-          document.querySelector('.drawer-overlay')?.classList.toggle('active');
-        }}>
-          <Menu size={24} />
-          <span>תפריט</span>
-        </div>
-      </div>
-
-      {/* Main Content */}
       <div className="main-content">
         <div className="header">
           <h2>
@@ -539,10 +127,10 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
           <div className="header-actions" style={{ display: 'flex', gap: '8px' }}>
             {activeFilter === 'DASHBOARD' ? (
               <>
-                <button className="btn btn-outline" onClick={exportToCSV} title="ייצוא לאקסל">
+                <button className="btn btn-outline" onClick={handleExportCSV} title="ייצוא לאקסל">
                   <Download size={16} /> אקסל (CSV)
                 </button>
-                <button className="btn btn-outline" onClick={copyExecutiveWhatsapp} title="העתק סיכום לוואטסאפ של הפיקוד">
+                <button className="btn btn-outline" onClick={handleCopyWhatsapp} title="העתק סיכום לוואטסאפ של הפיקוד">
                   {copiedWhatsapp ? <Check size={16} color="var(--success-color)" /> : <Share2 size={16} />} 
                   {copiedWhatsapp ? 'הועתק!' : 'סיכום לוואטסאפ'}
                 </button>
@@ -568,38 +156,11 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
 
         <div className="content-area">
           {activeFilter === 'HOME_TOPICS' && (
-            <div className="topics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '16px', paddingBottom: '32px' }}>
-              {initialTopics.map((topic: any) => {
-                const topicTasks = initialTasks.filter((t: any) => t.topic_id === topic.id);
-                const completedTasks = topicTasks.filter((t: any) => t.status === 'DONE').length;
-                const progress = topicTasks.length > 0 ? Math.round((completedTasks / topicTasks.length) * 100) : 0;
-                
-                return (
-                  <div key={topic.id} className="topic-folder-card premium-shadow" onClick={() => setActiveFilter(topic.id)} style={{ cursor: 'pointer', background: 'white', borderRadius: '24px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', transition: 'transform 0.2s', border: '1px solid rgba(0,0,0,0.05)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ background: '#e8f0fe', padding: '12px', borderRadius: '16px', display: 'flex' }}>
-                        <Folder size={28} color="#1a73e8" fill="#1a73e8" fillOpacity={0.2} />
-                      </div>
-                    </div>
-                    
-                    <div style={{ flex: 1 }}>
-                      <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', color: '#202124', lineHeight: '1.3' }}>{topic.title}</h3>
-                      <div style={{ fontSize: '13px', color: '#5f6368' }}>{topicTasks.length} משימות</div>
-                    </div>
-                    
-                    <div style={{ marginTop: 'auto' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#5f6368', marginBottom: '6px', fontWeight: 600 }}>
-                        <span>התקדמות</span>
-                        <span>{progress}%</span>
-                      </div>
-                      <div style={{ height: '6px', background: '#f1f3f4', borderRadius: '4px', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', background: progress === 100 ? '#1e8e3e' : '#1a73e8', width: `${progress}%`, transition: 'width 0.5s ease-out' }}></div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <TopicGrid 
+              initialTopics={initialTopics} 
+              initialTasks={initialTasks} 
+              setActiveFilter={setActiveFilter} 
+            />
           )}
 
           {/* New User Form & Approvals */}
@@ -876,13 +437,19 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
                   <form action={async (formData) => {
                     await createTask(formData);
                     setShowNewTaskForm(false);
+                    setIsNewTopic(false);
                   }} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <input type="text" name="title" placeholder="תיאור המשימה..." required />
                     
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px' }}>
-                      <select name="topicId" required defaultValue={typeof activeFilter === 'number' ? activeFilter : ''}>
+                    {isNewTopic && (
+                      <input type="text" name="newTopicTitle" placeholder="שם הנושא החדש" required />
+                    )}
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+                      <select name="topicId" required defaultValue={typeof activeFilter === 'number' ? activeFilter : ''} onChange={(e) => setIsNewTopic(e.target.value === 'NEW_TOPIC')}>
                         <option value="" disabled>בחר נושא</option>
                         {initialTopics.map((t: any) => <option key={t.id} value={t.id}>{t.title}</option>)}
+                        <option value="NEW_TOPIC" style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>➕ נושא חדש...</option>
                       </select>
                       
                       <select name="userId" defaultValue={currentUser.userId}>
@@ -902,7 +469,7 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
                     <input type="url" name="driveLink" placeholder="קישור לתיקייה/קובץ בדרייב (אופציונלי)" />
 
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                      <button type="button" className="btn btn-outline" onClick={() => setShowNewTaskForm(false)}>ביטול</button>
+                      <button type="button" className="btn btn-outline" onClick={() => { setShowNewTaskForm(false); setIsNewTopic(false); }}>ביטול</button>
                       <button type="submit" className="btn">הוסף משימה</button>
                     </div>
                   </form>
@@ -924,12 +491,14 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
               {/* Task List */}
               <div className="task-list">
                 {tasks.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-secondary)' }}>
-                    אין משימות בתצוגה זו.
+                  <div style={{ textAlign: 'center', padding: '64px 24px', color: 'var(--text-secondary)', background: 'white', borderRadius: '16px', border: '1px dashed #ccc' }}>
+                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>✨</div>
+                    <h3 style={{ fontSize: '18px', color: '#555', marginBottom: '8px' }}>הכל נקי ומסודר!</h3>
+                    <p style={{ fontSize: '14px', maxWidth: '300px', margin: '0 auto' }}>לא מצאנו משימות בתצוגה זו. תוכל תמיד להוסיף משימה חדשה דרך כפתור הפלוס למטה.</p>
                   </div>
                 ) : (
                   typeof activeFilter === 'number' ? (
-                    tasks.map((task: any) => renderTask(task))
+                    tasks.map((task: any) => <TaskCard key={task.id} task={task} initialSubtasks={initialSubtasks} initialTopics={initialTopics} approvedUsers={approvedUsers} editingTaskId={editingTaskId} setEditingTaskId={setEditingTaskId} expandedTaskId={expandedTaskId} setExpandedTaskId={setExpandedTaskId} addingSubtaskToTaskId={addingSubtaskToTaskId} setAddingSubtaskToTaskId={setAddingSubtaskToTaskId} />)
                   ) : (
                     <>
                       {initialTopics.map((topic: any) => {
@@ -949,9 +518,7 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
                               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '8px' }}><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path></svg>
                               {topic.title}
                             </h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                              {topicTasks.map((task: any) => renderTask(task))}
-                            </div>
+                              {topicTasks.map((task: any) => <TaskCard key={task.id} task={task} initialSubtasks={initialSubtasks} initialTopics={initialTopics} approvedUsers={approvedUsers} editingTaskId={editingTaskId} setEditingTaskId={setEditingTaskId} expandedTaskId={expandedTaskId} setExpandedTaskId={setExpandedTaskId} addingSubtaskToTaskId={addingSubtaskToTaskId} setAddingSubtaskToTaskId={setAddingSubtaskToTaskId} />)}
                           </div>
                         );
                       })}
@@ -973,7 +540,7 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
                               ללא נושא ספציפי
                             </h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                              {unassignedTasks.map((task: any) => renderTask(task))}
+                              {unassignedTasks.map((task: any) => <TaskCard key={task.id} task={task} initialSubtasks={initialSubtasks} initialTopics={initialTopics} approvedUsers={approvedUsers} editingTaskId={editingTaskId} setEditingTaskId={setEditingTaskId} expandedTaskId={expandedTaskId} setExpandedTaskId={setExpandedTaskId} addingSubtaskToTaskId={addingSubtaskToTaskId} setAddingSubtaskToTaskId={setAddingSubtaskToTaskId} />)}
                             </div>
                           </div>
                         );

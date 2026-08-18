@@ -150,14 +150,25 @@ export async function getTasksByTopic(topicId: number) {
 
 export async function createTask(formData: FormData) {
   const title = formData.get('title') as string;
-  const topicId = formData.get('topicId') as string;
+  let topicId = formData.get('topicId') as string;
+  const newTopicTitle = formData.get('newTopicTitle') as string;
   const userId = formData.get('userId') as string;
   const driveLink = formData.get('driveLink') as string;
   const priority = (formData.get('priority') as string) || 'MEDIUM';
   const dueDate = (formData.get('dueDate') as string) || null;
   const status = (formData.get('status') as string) || 'TODO';
   
-  if (!title || !topicId) return { error: 'חובה למלא שם משימה ונושא' };
+  if (!title) return { error: 'חובה למלא שם משימה' };
+
+  if (topicId === 'NEW_TOPIC' && newTopicTitle) {
+    const res = await db.execute({
+      sql: 'INSERT INTO topics (title) VALUES (?)',
+      args: [newTopicTitle]
+    });
+    topicId = res.lastInsertRowid!.toString();
+  } else if (!topicId) {
+    return { error: 'חובה לבחור נושא' };
+  }
 
   await db.execute({
     sql: 'INSERT INTO tasks (title, topic_id, user_id, drive_link, priority, due_date, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
