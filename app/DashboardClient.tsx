@@ -6,7 +6,8 @@ import { logout, createTopic, createTask, updateTaskStatus, deleteTask, updateTa
 import { 
   CheckCircle2, Circle, AlertCircle, Clock, 
   Plus, LogOut, LayoutDashboard, Folder, User, MessageCircle, BarChart, Edit2, Link, ExternalLink,
-  Calendar, AlertTriangle, Download, Copy, Check, Share2, UserPlus, UserCheck, UserX, CheckSquare, Square
+  Calendar, AlertTriangle, Download, Copy, Check, Share2, UserPlus, UserCheck, UserX, CheckSquare, Square,
+  Home, Users, ChevronDown, Menu
 } from 'lucide-react';
 
 export default function DashboardClient({ initialTopics, initialTasks, initialSubtasks = [], users, currentUser }: any) {
@@ -20,7 +21,7 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
     return () => clearInterval(interval);
   }, [router]);
 
-  const [activeFilter, setActiveFilter] = useState<number | 'ALL' | 'MY' | 'DASHBOARD'>('ALL');
+  const [activeFilter, setActiveFilter] = useState<number | string | 'ALL' | 'MY' | 'DASHBOARD' | 'HOME' | 'USERS'>('HOME');
   const [showNewTaskForm, setShowNewTaskForm] = useState(false);
   const [showNewTopicForm, setShowNewTopicForm] = useState(false);
   const [showNewUserForm, setShowNewUserForm] = useState(false);
@@ -28,6 +29,8 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [addingSubtaskToTaskId, setAddingSubtaskToTaskId] = useState<number | null>(null);
   const [copiedWhatsapp, setCopiedWhatsapp] = useState(false);
+  const [showFabMenu, setShowFabMenu] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'OPEN' | 'DONE' | 'ALL'>('OPEN');
 
   const approvedUsers = users.filter((u: any) => u.is_approved === 1);
   const pendingUsers = users.filter((u: any) => u.is_approved === 0);
@@ -179,175 +182,83 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
   };
 
   const renderTask = (task: any) => (
-                    editingTaskId === task.id ? (
-                      <div key={task.id} id={`task-${task.id}`} className="task-card" style={{ marginBottom: '16px', border: '1px solid var(--primary-color)', flexWrap: 'wrap', backgroundColor: '#f8f9fa' }}>
-                        <form action={async (formData) => {
-                          await updateTask(task.id, formData);
-                          setEditingTaskId(null);
-                        }} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                          <input type="text" name="title" defaultValue={task.title} required placeholder="תיאור המשימה..." />
-                          
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px' }}>
-                            <select name="topicId" required defaultValue={task.topic_id}>
-                              <option value="" disabled>בחר נושא</option>
-                              {initialTopics.map((t: any) => <option key={t.id} value={t.id}>{t.title}</option>)}
-                            </select>
-                            
-                            <select name="userId" defaultValue={task.user_id || ''}>
-                              <option value="">ללא שיוך</option>
-                              {approvedUsers.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                            </select>
+    editingTaskId === task.id ? (
+      <div key={task.id} id={`task-${task.id}`} className="task-card" style={{ marginBottom: '16px', border: '1px solid var(--primary-color)', flexWrap: 'wrap', backgroundColor: '#f8f9fa' }}>
+        <form action={async (formData) => {
+          await updateTask(task.id, formData);
+          setEditingTaskId(null);
+        }} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <input type="text" name="title" defaultValue={task.title} required placeholder="תיאור המשימה..." />
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px' }}>
+            <select name="topicId" required defaultValue={task.topic_id}>
+              <option value="" disabled>בחר נושא</option>
+              {initialTopics.map((t: any) => <option key={t.id} value={t.id}>{t.title}</option>)}
+            </select>
+            
+            <select name="userId" defaultValue={task.user_id || ''}>
+              <option value="">ללא שיוך</option>
+              {approvedUsers.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
 
-                            <select name="priority" defaultValue={task.priority || 'MEDIUM'}>
-                              <option value="HIGH">🔴 עדיפות: דחוף</option>
-                              <option value="MEDIUM">🟡 עדיפות: רגיל</option>
-                              <option value="LOW">⚪ עדיפות: נמוך</option>
-                            </select>
+            <select name="priority" defaultValue={task.priority || 'MEDIUM'}>
+              <option value="HIGH">🔴 עדיפות: דחוף</option>
+              <option value="MEDIUM">🟡 עדיפות: רגיל</option>
+              <option value="LOW">⚪ עדיפות: נמוך</option>
+            </select>
 
-                            <input type="date" name="dueDate" defaultValue={task.due_date || ''} />
-                          </div>
+            <input type="date" name="dueDate" defaultValue={task.due_date || ''} />
+          </div>
 
-                          <textarea name="description" placeholder="הערות או תיאור מורחב..." defaultValue={task.description} rows={2}></textarea>
-                          <textarea name="progressLog" placeholder="הערת סטטוס והתקדמות שוטפת (לדוגמה: 16/08 בוצעו 4 ראיונות מתוך 10)..." defaultValue={task.progress_log} rows={2}></textarea>
-                          <input type="url" name="driveLink" defaultValue={task.drive_link} placeholder="קישור לדרייב (אופציונלי)" />
+          <textarea name="description" placeholder="הערות או תיאור מורחב..." defaultValue={task.description} rows={2}></textarea>
+          <textarea name="progressLog" placeholder="הערת סטטוס והתקדמות שוטפת (לדוגמה: 16/08 בוצעו 4 ראיונות מתוך 10)..." defaultValue={task.progress_log} rows={2}></textarea>
+          <input type="url" name="driveLink" defaultValue={task.drive_link} placeholder="קישור לדרייב (אופציונלי)" />
 
-                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                            <button type="button" className="btn btn-outline" onClick={() => setEditingTaskId(null)}>ביטול</button>
-                            <button type="submit" className="btn">שמור שינויים</button>
-                          </div>
-                        </form>
-                      </div>
-                    ) : (
-                    <div key={task.id} id={`task-${task.id}`} className="task-card">
-                      <div style={{ cursor: 'pointer' }} onClick={() => updateTaskStatus(task.id, task.status === 'DONE' ? 'TODO' : 'DONE')}>
-                        {getStatusIcon(task.status)}
-                      </div>
-                      
-                      <div className="task-content">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <div className="task-title" style={{ textDecoration: task.status === 'DONE' ? 'line-through' : 'none', color: task.status === 'DONE' ? 'var(--text-secondary)' : 'inherit' }}>
-                            {task.title}
-                          </div>
-                          {getPriorityBadge(task.priority)}
-                          {getDueDateBadge(task.due_date, task.status)}
-                        </div>
-
-                        {task.description && (
-                          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '4px', whiteSpace: 'pre-wrap' }}>
-                            {task.description}
-                          </div>
-                        )}
-
-                        {task.progress_log && (
-                          <div style={{ fontSize: '12px', background: '#f1f3f4', borderRight: '3px solid var(--primary-color)', padding: '4px 8px', borderRadius: '4px', margin: '4px 0', color: '#3c4043' }}>
-                            <strong>סטטוס אחרון:</strong> {task.progress_log}
-                          </div>
-                        )}
-
-                        {task.drive_link && (
-                          <div style={{ marginTop: '8px', marginBottom: '4px' }}>
-                            <a 
-                              href={task.drive_link} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#1a73e8', textDecoration: 'none', background: '#e8f0fe', padding: '6px 10px', borderRadius: '4px', border: '1px solid #d2e3fc', fontWeight: 500 }}
-                            >
-                              <Link size={14} /> פתח מסמך מקושר
-                            </a>
-                          </div>
-                        )}
-
-                        <div className="task-meta" style={{ marginTop: '4px' }}>
-                          <span>{task.topic_title}</span>
-                          <span>•</span>
-                          <span>{task.user_name || 'לא שויך'}</span>
-                        </div>
-
-                        {/* Subtasks (רמה ג') */}
-                        <div style={{ marginTop: '12px', borderTop: '1px solid #eee', paddingTop: '8px' }}>
-                          {initialSubtasks
-                            .filter((st: any) => st.task_id === task.id)
-                            .map((st: any) => (
-                              <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
-                                <div style={{ cursor: 'pointer', color: st.status === 'DONE' ? 'var(--success-color)' : 'var(--text-secondary)' }} onClick={() => updateSubtaskStatus(st.id, st.status === 'DONE' ? 'TODO' : 'DONE')}>
-                                  {st.status === 'DONE' ? <CheckSquare size={16} /> : <Square size={16} />}
-                                </div>
-                                <div style={{ fontSize: '13px', flex: 1, textDecoration: st.status === 'DONE' ? 'line-through' : 'none', color: st.status === 'DONE' ? 'var(--text-secondary)' : 'inherit' }}>
-                                  {st.title}
-                                </div>
-                                <button onClick={() => { if(confirm('למחוק תת-משימה זו?')) deleteSubtask(st.id) }} style={{ background: 'none', border: 'none', color: '#ff6b6b', cursor: 'pointer', fontSize: '12px' }}>
-                                  מחק
-                                </button>
-                              </div>
-                            ))}
-                            
-                          {addingSubtaskToTaskId === task.id ? (
-                            <form action={async (formData) => {
-                              const title = formData.get('title') as string;
-                              if (title) await createSubtask(task.id, title);
-                              setAddingSubtaskToTaskId(null);
-                            }} style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                              <input type="text" name="title" autoFocus placeholder="תיאור תת-משימה..." style={{ flex: 1, padding: '4px 8px', fontSize: '13px', height: '28px' }} required />
-                              <button type="submit" className="btn" style={{ padding: '4px 12px', fontSize: '12px', height: '28px' }}>שמור</button>
-                              <button type="button" className="btn btn-outline" style={{ padding: '4px 12px', fontSize: '12px', height: '28px' }} onClick={() => setAddingSubtaskToTaskId(null)}>ביטול</button>
-                            </form>
-                          ) : (
-                            <div style={{ marginTop: '8px' }}>
-                              <button onClick={() => setAddingSubtaskToTaskId(task.id)} style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <Plus size={14} /> הוסף תת-משימה (צ'קליסט)
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <select 
-                          value={task.status} 
-                          onChange={(e) => updateTaskStatus(task.id, e.target.value)}
-                          style={{ width: 'auto', padding: '4px 8px', fontSize: '12px', height: '28px' }}
-                        >
-                          <option value="TODO">לביצוע</option>
-                          <option value="IN_PROGRESS">בתהליך</option>
-                          <option value="DONE">בוצע</option>
-                          <option value="STUCK">תקוע</option>
-                        </select>
-                        {getStatusBadge(task.status)}
-                        {task.drive_link && (
-                          <button 
-                            onClick={() => window.open(task.drive_link, '_blank')}
-                            title="פתיחת קבצים ב-Drive"
-                            style={{ background: 'none', border: 'none', color: '#1fa463', cursor: 'pointer', display: 'flex', alignItems: 'center', marginLeft: '4px' }}
-                          >
-                            <Link size={16} />
-                          </button>
-                        )}
-                        <button 
-                          onClick={() => setEditingTaskId(task.id)}
-                          title="ערוך משימה, עדיפות וסטטוס"
-                          style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', marginLeft: '4px' }}
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button 
-                          onClick={() => {
-                            const text = `משימה: ${task.title}\nנושא: ${task.topic_title || 'ללא נושא'}\nאחראי: ${task.user_name || 'טרם שויך'}\nעדיפות: ${task.priority === 'HIGH' ? 'דחוף' : 'רגיל'}${task.due_date ? '\nיעד: ' + task.due_date : ''}${task.progress_log ? '\nסטטוס: ' + task.progress_log : ''}\n\nלצפייה במשימה: https://difs.vercel.app/`;
-                            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-                          }}
-                          title="שתף ב-WhatsApp"
-                          style={{ background: 'none', border: 'none', color: '#25D366', cursor: 'pointer', display: 'flex', alignItems: 'center', marginLeft: '4px' }}
-                        >
-                          <MessageCircle size={16} />
-                        </button>
-                        <button 
-                          onClick={() => { if(confirm('למחוק משימה זו?')) deleteTask(task.id) }} 
-                          style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    </div>
-                  )
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+            <button type="button" className="btn btn-outline" onClick={() => setEditingTaskId(null)}>ביטול</button>
+            <button type="submit" className="btn">שמור שינויים</button>
+          </div>
+        </form>
+      </div>
+    ) : (
+      <div 
+        key={task.id} 
+        id={`task-${task.id}`} 
+        className="task-card minimal-card" 
+        onClick={() => setEditingTaskId(task.id)}
+        style={{ cursor: 'pointer', padding: '12px', display: 'flex', alignItems: 'center' }}
+      >
+        <div 
+          className="status-toggle-btn"
+          style={{ cursor: 'pointer', marginRight: '12px', display: 'flex', alignItems: 'center' }} 
+          onClick={(e) => {
+            e.stopPropagation();
+            updateTaskStatus(task.id, task.status === 'DONE' ? 'TODO' : 'DONE');
+          }}
+        >
+          {getStatusIcon(task.status)}
+        </div>
+        
+        <div className="task-content" style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="task-title" style={{ margin: 0, textDecoration: task.status === 'DONE' ? 'line-through' : 'none', color: task.status === 'DONE' ? 'var(--text-secondary)' : 'inherit', fontSize: '15px' }}>
+              {task.title}
+            </div>
+          </div>
+          <div className="task-meta" style={{ marginTop: '4px', fontSize: '12px' }}>
+            <span style={{ color: 'var(--primary-color)', fontWeight: 500 }}>{task.topic_title}</span>
+            <span>•</span>
+            <span>{task.user_name || 'לא שויך'}</span>
+            <span>•</span>
+            {getPriorityBadge(task.priority)}
+            {task.progress_log && (
+               <span style={{ marginLeft: '8px', color: '#666' }}>({task.progress_log})</span>
+            )}
+          </div>
+        </div>
+        <ChevronDown size={18} color="var(--text-secondary)" style={{ marginLeft: '8px' }} />
+      </div>
+    )
   );
 
   return (
@@ -362,19 +273,11 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
         </div>
 
         <div 
-          className={`nav-item ${activeFilter === 'DASHBOARD' ? 'active' : ''}`}
-          onClick={() => setActiveFilter('DASHBOARD')}
+          className={`nav-item ${activeFilter === 'HOME' ? 'active' : ''}`}
+          onClick={() => setActiveFilter('HOME')}
         >
-          <BarChart size={18} style={{ marginLeft: '12px' }} />
-          דשבורד ודוחות
-        </div>
-
-        <div 
-          className={`nav-item ${activeFilter === 'ALL' ? 'active' : ''}`}
-          onClick={() => setActiveFilter('ALL')}
-        >
-          <LayoutDashboard size={18} style={{ marginLeft: '12px' }} />
-          כל המשימות
+          <Home size={18} style={{ marginLeft: '12px' }} />
+          מסך הבית (נושאים)
         </div>
         
         <div 
@@ -383,6 +286,14 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
         >
           <User size={18} style={{ marginLeft: '12px' }} />
           המשימות שלי
+        </div>
+
+        <div 
+          className={`nav-item ${activeFilter === 'USERS' ? 'active' : ''}`}
+          onClick={() => setActiveFilter('USERS')}
+        >
+          <Users size={18} style={{ marginLeft: '12px' }} />
+          ניהול צוות
         </div>
 
         <div style={{ marginTop: '24px', marginBottom: '8px', padding: '0 24px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>

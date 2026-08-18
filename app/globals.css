@@ -592,3 +592,48 @@ input:focus, textarea:focus, select:focus {
 
 
 
+
+  .fab-menu {
+    position: absolute;
+    bottom: 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, transform 0.2s;
+    transform: translateY(20px);
+    z-index: 910;
+  }
+  
+  .fab-menu.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+  
+  .fab-menu-item {
+    background: #ffffff;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--primary-color);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  
+  .fab-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255,255,255,0.8);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 905;
+  }
