@@ -239,3 +239,42 @@ export async function revokeUserAccess(userId: number) {
   });
   revalidatePath('/');
 }
+
+// Subtasks
+export async function getSubtasks() {
+  const result = await db.execute('SELECT * FROM subtasks ORDER BY created_at ASC');
+  return result.rows;
+}
+
+export async function createSubtask(taskId: number, title: string) {
+  const session = await getSession();
+  if (!session) throw new Error('Unauthorized');
+
+  await db.execute({
+    sql: 'INSERT INTO subtasks (task_id, title) VALUES (?, ?)',
+    args: [taskId, title]
+  });
+  revalidatePath('/');
+}
+
+export async function updateSubtaskStatus(subtaskId: number, status: string) {
+  const session = await getSession();
+  if (!session) throw new Error('Unauthorized');
+
+  await db.execute({
+    sql: "UPDATE subtasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    args: [status, subtaskId]
+  });
+  revalidatePath('/');
+}
+
+export async function deleteSubtask(subtaskId: number) {
+  const session = await getSession();
+  if (!session) throw new Error('Unauthorized');
+
+  await db.execute({
+    sql: 'DELETE FROM subtasks WHERE id = ?',
+    args: [subtaskId]
+  });
+  revalidatePath('/');
+}

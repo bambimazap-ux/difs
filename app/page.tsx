@@ -1,5 +1,5 @@
 import { getSession } from '@/lib/auth';
-import { getTopics, getTasks, getUsers } from '@/lib/actions';
+import { getTopics, getTasks, getUsers, getSubtasks } from '@/lib/actions';
 import DashboardClient from './DashboardClient';
 import { redirect } from 'next/navigation';
 
@@ -13,6 +13,7 @@ export default async function Home() {
   const topics = await getTopics();
   const tasks = await getTasks();
   const users = await getUsers();
+  const subtasks = await getSubtasks();
 
   const dbUser = users.find((u: any) => u.id === session.userId);
   if (!dbUser || dbUser.is_approved === 0) {
@@ -38,6 +39,7 @@ export default async function Home() {
     <DashboardClient 
       initialTopics={topics} 
       initialTasks={tasks} 
+      initialSubtasks={subtasks}
       users={users}
       currentUser={session} 
     />

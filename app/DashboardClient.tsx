@@ -1,20 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { logout, createTopic, createTask, updateTaskStatus, deleteTask, updateTask, createTeamMember, approveUser, rejectUser, revokeUserAccess } from '@/lib/actions';
+import { logout, createTopic, createTask, updateTaskStatus, deleteTask, updateTask, createTeamMember, approveUser, rejectUser, revokeUserAccess, createSubtask, updateSubtaskStatus, deleteSubtask } from '@/lib/actions';
 import { 
   CheckCircle2, Circle, AlertCircle, Clock, 
   Plus, LogOut, LayoutDashboard, Folder, User, MessageCircle, BarChart, Edit2, Link, ExternalLink,
-  Calendar, AlertTriangle, Download, Copy, Check, Share2, UserPlus, UserCheck, UserX
+  Calendar, AlertTriangle, Download, Copy, Check, Share2, UserPlus, UserCheck, UserX, CheckSquare, Square
 } from 'lucide-react';
 
-export default function DashboardClient({ initialTopics, initialTasks, users, currentUser }: any) {
+export default function DashboardClient({ initialTopics, initialTasks, initialSubtasks = [], users, currentUser }: any) {
   const [activeFilter, setActiveFilter] = useState<number | 'ALL' | 'MY' | 'DASHBOARD'>('ALL');
   const [showNewTaskForm, setShowNewTaskForm] = useState(false);
   const [showNewTopicForm, setShowNewTopicForm] = useState(false);
   const [showNewUserForm, setShowNewUserForm] = useState(false);
   const [userFormMsg, setUserFormMsg] = useState('');
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
+  const [addingSubtaskToTaskId, setAddingSubtaskToTaskId] = useState<number | null>(null);
   const [copiedWhatsapp, setCopiedWhatsapp] = useState(false);
 
   const approvedUsers = users.filter((u: any) => u.is_approved === 1);
@@ -610,6 +611,18 @@ export default function DashboardClient({ initialTopics, initialTasks, users, cu
                 </div>
               )}
 
+              {/* Task List Header (Topic Specific) */}
+              {typeof activeFilter === 'number' && !showNewTaskForm && (
+                <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>
+                    {initialTopics.find((t: any) => t.id === activeFilter)?.title}
+                  </h3>
+                  <button className="btn" onClick={() => setShowNewTaskForm(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Plus size={16} /> הוסף משימה לנושא זה
+                  </button>
+                </div>
+              )}
+
               {/* Task List */}
               <div className="task-list">
                 {tasks.length === 0 ? (
@@ -687,6 +700,43 @@ export default function DashboardClient({ initialTopics, initialTasks, users, cu
                           <span>{task.topic_title}</span>
                           <span>•</span>
                           <span>{task.user_name || 'לא שויך'}</span>
+                        </div>
+
+                        {/* Subtasks (רמה ג') */}
+                        <div style={{ marginTop: '12px', borderTop: '1px solid #eee', paddingTop: '8px' }}>
+                          {initialSubtasks
+                            .filter((st: any) => st.task_id === task.id)
+                            .map((st: any) => (
+                              <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
+                                <div style={{ cursor: 'pointer', color: st.status === 'DONE' ? 'var(--success-color)' : 'var(--text-secondary)' }} onClick={() => updateSubtaskStatus(st.id, st.status === 'DONE' ? 'TODO' : 'DONE')}>
+                                  {st.status === 'DONE' ? <CheckSquare size={16} /> : <Square size={16} />}
+                                </div>
+                                <div style={{ fontSize: '13px', flex: 1, textDecoration: st.status === 'DONE' ? 'line-through' : 'none', color: st.status === 'DONE' ? 'var(--text-secondary)' : 'inherit' }}>
+                                  {st.title}
+                                </div>
+                                <button onClick={() => { if(confirm('למחוק תת-משימה זו?')) deleteSubtask(st.id) }} style={{ background: 'none', border: 'none', color: '#ff6b6b', cursor: 'pointer', fontSize: '12px' }}>
+                                  מחק
+                                </button>
+                              </div>
+                            ))}
+                            
+                          {addingSubtaskToTaskId === task.id ? (
+                            <form action={async (formData) => {
+                              const title = formData.get('title') as string;
+                              if (title) await createSubtask(task.id, title);
+                              setAddingSubtaskToTaskId(null);
+                            }} style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                              <input type="text" name="title" autoFocus placeholder="תיאור תת-משימה..." style={{ flex: 1, padding: '4px 8px', fontSize: '13px', height: '28px' }} required />
+                              <button type="submit" className="btn" style={{ padding: '4px 12px', fontSize: '12px', height: '28px' }}>שמור</button>
+                              <button type="button" className="btn btn-outline" style={{ padding: '4px 12px', fontSize: '12px', height: '28px' }} onClick={() => setAddingSubtaskToTaskId(null)}>ביטול</button>
+                            </form>
+                          ) : (
+                            <div style={{ marginTop: '8px' }}>
+                              <button onClick={() => setAddingSubtaskToTaskId(task.id)} style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <Plus size={14} /> הוסף תת-משימה (צ'קליסט)
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
 
