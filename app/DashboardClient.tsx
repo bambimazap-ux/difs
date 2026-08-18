@@ -519,8 +519,8 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
           document.querySelector('.sidebar')?.classList.toggle('mobile-open');
           document.querySelector('.drawer-overlay')?.classList.toggle('active');
         }}>
-          <Folder size={24} />
-          <span>נושאים</span>
+          <Menu size={24} />
+          <span>תפריט</span>
         </div>
       </div>
 
