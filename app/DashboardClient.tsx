@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { logout, createTopic, createTask, updateTaskStatus, deleteTask, updateTask, createTeamMember, approveUser, rejectUser, revokeUserAccess, createSubtask, updateSubtaskStatus, deleteSubtask } from '@/lib/actions';
 import { 
   CheckCircle2, Circle, AlertCircle, Clock, 
@@ -9,6 +10,16 @@ import {
 } from 'lucide-react';
 
 export default function DashboardClient({ initialTopics, initialTasks, initialSubtasks = [], users, currentUser }: any) {
+  const router = useRouter();
+
+  // Auto-refresh data every 5 seconds to sync between users
+  useEffect(() => {
+    const interval = setInterval(() => {
+      router.refresh();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [router]);
+
   const [activeFilter, setActiveFilter] = useState<number | 'ALL' | 'MY' | 'DASHBOARD'>('ALL');
   const [showNewTaskForm, setShowNewTaskForm] = useState(false);
   const [showNewTopicForm, setShowNewTopicForm] = useState(false);
@@ -476,6 +487,45 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
         >
           <LogOut size={18} style={{ marginLeft: '12px' }} />
           התנתק
+        </div>
+      </div>
+
+      <div 
+        className="drawer-overlay" 
+        onClick={() => {
+          document.querySelector('.sidebar')?.classList.remove('mobile-open');
+          document.querySelector('.drawer-overlay')?.classList.remove('active');
+        }}
+      ></div>
+
+      {/* --- Mobile Bottom Navigation --- */}
+      <div className="mobile-bottom-nav">
+        <div className={`nav-icon ${activeFilter === 'DASHBOARD' ? 'active' : ''}`} onClick={() => setActiveFilter('DASHBOARD')}>
+          <BarChart size={24} />
+          <span>דשבורד</span>
+        </div>
+        <div className={`nav-icon ${activeFilter === 'ALL' ? 'active' : ''}`} onClick={() => setActiveFilter('ALL')}>
+          <LayoutDashboard size={24} />
+          <span>הכל</span>
+        </div>
+        
+        <div className="fab-container">
+          <button className="fab-button" onClick={() => setShowNewTaskForm(true)}>
+            <Plus size={28} color="white" />
+          </button>
+        </div>
+
+        <div className={`nav-icon ${activeFilter === 'MY' ? 'active' : ''}`} onClick={() => setActiveFilter('MY')}>
+          <User size={24} />
+          <span>שלי</span>
+        </div>
+        {/* Toggle Sidebar/Drawer for Topics & Settings */}
+        <div className="nav-icon" onClick={() => {
+          document.querySelector('.sidebar')?.classList.toggle('mobile-open');
+          document.querySelector('.drawer-overlay')?.classList.toggle('active');
+        }}>
+          <Folder size={24} />
+          <span>נושאים</span>
         </div>
       </div>
 
