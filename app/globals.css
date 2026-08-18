@@ -637,3 +637,51 @@ input:focus, textarea:focus, select:focus {
     -webkit-backdrop-filter: blur(4px);
     z-index: 905;
   }
+
+/* Premium Shadows & Modern UI */
+.premium-shadow {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.premium-shadow:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.topic-folder-card:active {
+  transform: scale(0.97);
+}
+
+/* Hide header buttons on mobile as requested (only keep title) */
+@media (max-width: 768px) {
+  .header-actions {
+    display: none !important;
+  }
+  
+  .header {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: none;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.05);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  
+  .content-area {
+    padding: 16px;
+    padding-bottom: 100px; /* Space for bottom nav and fab */
+    background: #f8f9fa; /* slightly grey background for contrast */
+  }
+
+  .task-card {
+    border: none !important;
+  }
+  
+  /* Quick actions stack or spacing on small screens */
+  .quick-actions button {
+    padding: 8px !important;
+  }
+}

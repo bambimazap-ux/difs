@@ -7,7 +7,7 @@ import {
   CheckCircle2, Circle, AlertCircle, Clock, 
   Plus, LogOut, LayoutDashboard, Folder, User, MessageCircle, BarChart, Edit2, Link, ExternalLink,
   Calendar, AlertTriangle, Download, Copy, Check, Share2, UserPlus, UserCheck, UserX, CheckSquare, Square,
-  Home, Users, ChevronDown, Menu
+  Home, Users, ChevronDown, ChevronUp, Menu
 } from 'lucide-react';
 
 export default function DashboardClient({ initialTopics, initialTasks, initialSubtasks = [], users, currentUser }: any) {
@@ -21,7 +21,8 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
     return () => clearInterval(interval);
   }, [router]);
 
-  const [activeFilter, setActiveFilter] = useState<number | string | 'ALL' | 'MY' | 'DASHBOARD' | 'HOME' | 'USERS'>('HOME');
+  const [activeFilter, setActiveFilter] = useState<number | string | 'ALL' | 'MY' | 'DASHBOARD' | 'HOME_TOPICS' | 'USERS'>('HOME_TOPICS');
+  const [expandedTaskId, setExpandedTaskId] = useState<number | null>(null);
   const [showNewTaskForm, setShowNewTaskForm] = useState(false);
   const [showNewTopicForm, setShowNewTopicForm] = useState(false);
   const [showNewUserForm, setShowNewUserForm] = useState(false);
@@ -491,13 +492,16 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
 
       {/* --- Mobile Bottom Navigation --- */}
       <div className="mobile-bottom-nav">
+        <div className={`nav-icon ${activeFilter === 'HOME_TOPICS' ? 'active' : ''}`} onClick={() => {
+            setActiveFilter('HOME_TOPICS');
+            setExpandedTaskId(null);
+        }}>
+          <Home size={24} />
+          <span>בית</span>
+        </div>
         <div className={`nav-icon ${activeFilter === 'DASHBOARD' ? 'active' : ''}`} onClick={() => setActiveFilter('DASHBOARD')}>
           <BarChart size={24} />
           <span>דשבורד</span>
-        </div>
-        <div className={`nav-icon ${activeFilter === 'ALL' ? 'active' : ''}`} onClick={() => setActiveFilter('ALL')}>
-          <LayoutDashboard size={24} />
-          <span>הכל</span>
         </div>
         
         <div className="fab-container">
@@ -524,6 +528,7 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
       <div className="main-content">
         <div className="header">
           <h2>
+            {activeFilter === 'HOME_TOPICS' && 'מסך הבית (נושאים)'}
             {activeFilter === 'DASHBOARD' && 'דשבורד ודוחות פיקוד'}
             {activeFilter === 'ALL' && 'כל המשימות'}
             {activeFilter === 'MY' && 'המשימות שלי'}
@@ -531,7 +536,7 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
             {typeof activeFilter === 'number' && initialTopics.find((t: any) => t.id === activeFilter)?.title}
           </h2>
           
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div className="header-actions" style={{ display: 'flex', gap: '8px' }}>
             {activeFilter === 'DASHBOARD' ? (
               <>
                 <button className="btn btn-outline" onClick={exportToCSV} title="ייצוא לאקסל">
@@ -562,6 +567,41 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
         </div>
 
         <div className="content-area">
+          {activeFilter === 'HOME_TOPICS' && (
+            <div className="topics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '16px', paddingBottom: '32px' }}>
+              {initialTopics.map((topic: any) => {
+                const topicTasks = initialTasks.filter((t: any) => t.topic_id === topic.id);
+                const completedTasks = topicTasks.filter((t: any) => t.status === 'DONE').length;
+                const progress = topicTasks.length > 0 ? Math.round((completedTasks / topicTasks.length) * 100) : 0;
+                
+                return (
+                  <div key={topic.id} className="topic-folder-card premium-shadow" onClick={() => setActiveFilter(topic.id)} style={{ cursor: 'pointer', background: 'white', borderRadius: '24px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', transition: 'transform 0.2s', border: '1px solid rgba(0,0,0,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ background: '#e8f0fe', padding: '12px', borderRadius: '16px', display: 'flex' }}>
+                        <Folder size={28} color="#1a73e8" fill="#1a73e8" fillOpacity={0.2} />
+                      </div>
+                    </div>
+                    
+                    <div style={{ flex: 1 }}>
+                      <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', color: '#202124', lineHeight: '1.3' }}>{topic.title}</h3>
+                      <div style={{ fontSize: '13px', color: '#5f6368' }}>{topicTasks.length} משימות</div>
+                    </div>
+                    
+                    <div style={{ marginTop: 'auto' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#5f6368', marginBottom: '6px', fontWeight: 600 }}>
+                        <span>התקדמות</span>
+                        <span>{progress}%</span>
+                      </div>
+                      <div style={{ height: '6px', background: '#f1f3f4', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', background: progress === 100 ? '#1e8e3e' : '#1a73e8', width: `${progress}%`, transition: 'width 0.5s ease-out' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           {/* New User Form & Approvals */}
           {showNewUserForm && (
             <div className="task-card" style={{ marginBottom: '16px', border: '1px solid #1a73e8', backgroundColor: '#e8f0fe', flexDirection: 'column', alignItems: 'stretch' }}>
@@ -577,7 +617,7 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
                         <div>
                           <strong style={{ fontSize: '14px' }}>{pUser.name}</strong> <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>({pUser.email})</span>
                         </div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
+                        <div className="header-actions" style={{ display: 'flex', gap: '8px' }}>
                           <button className="btn" style={{ background: 'var(--success-color)', display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '13px' }} onClick={async () => {
                             await approveUser(pUser.id);
                             const text = `היי ${pUser.name}, חשבונך בפלטפורמת הפיקוח והבקרה של שלדור אושר בהצלחה! תוכל להיכנס למערכת כאן: https://difs.vercel.app/`;
@@ -609,7 +649,7 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
                         <strong style={{ fontSize: '14px' }}>{aUser.name}</strong> <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>({aUser.email})</span>
                         {aUser.id === currentUser.userId && <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--success-color)', fontWeight: 'bold' }}>(אתה)</span>}
                       </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                      <div className="header-actions" style={{ display: 'flex', gap: '8px' }}>
                         {aUser.id !== currentUser.userId && (
                           <button className="btn btn-outline" style={{ color: 'var(--danger-color)', borderColor: 'var(--danger-color)', padding: '6px 12px', fontSize: '13px' }} onClick={async () => {
                             if(confirm(`האם אתה בטוח שברצונך לחסום את ${aUser.name}? המשתמש ינותק מהמערכת באופן מיידי.`)) {
@@ -804,7 +844,7 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
                     return (
                       <div key={user.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
                         <span style={{ fontSize: '14px' }}>{user.name}</span>
-                        <div style={{ display: 'flex', gap: '8px' }}>
+                        <div className="header-actions" style={{ display: 'flex', gap: '8px' }}>
                           <span className="badge badge-todo">{pendingTasks.length} פתוחות</span>
                           <span className="badge badge-done">{userTasks.length - pendingTasks.length} הושלמו</span>
                         </div>
