@@ -181,85 +181,138 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
     setTimeout(() => setCopiedWhatsapp(false), 3000);
   };
 
-  const renderTask = (task: any) => (
-    editingTaskId === task.id ? (
-      <div key={task.id} id={`task-${task.id}`} className="task-card" style={{ marginBottom: '16px', border: '1px solid var(--primary-color)', flexWrap: 'wrap', backgroundColor: '#f8f9fa' }}>
-        <form action={async (formData) => {
-          await updateTask(task.id, formData);
-          setEditingTaskId(null);
-        }} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <input type="text" name="title" defaultValue={task.title} required placeholder="תיאור המשימה..." />
-          
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px' }}>
-            <select name="topicId" required defaultValue={task.topic_id}>
-              <option value="" disabled>בחר נושא</option>
-              {initialTopics.map((t: any) => <option key={t.id} value={t.id}>{t.title}</option>)}
-            </select>
+  const renderTask = (task: any) => {
+    const taskSubtasks = initialSubtasks.filter((st: any) => st.task_id === task.id);
+    const completedSubtasks = taskSubtasks.filter((st: any) => st.status === 'DONE').length;
+    
+    return (
+      editingTaskId === task.id ? (
+        <div key={task.id} id={`task-${task.id}`} className="task-card" style={{ marginBottom: '16px', border: '1px solid var(--primary-color)', flexWrap: 'wrap', backgroundColor: '#f8f9fa' }}>
+          <form action={async (formData) => {
+            await updateTask(task.id, formData);
+            setEditingTaskId(null);
+          }} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <input type="text" name="title" defaultValue={task.title} required placeholder="תיאור המשימה..." />
             
-            <select name="userId" defaultValue={task.user_id || ''}>
-              <option value="">ללא שיוך</option>
-              {approvedUsers.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px' }}>
+              <select name="topicId" required defaultValue={task.topic_id}>
+                <option value="" disabled>בחר נושא</option>
+                {initialTopics.map((t: any) => <option key={t.id} value={t.id}>{t.title}</option>)}
+              </select>
+              
+              <select name="userId" defaultValue={task.user_id || ''}>
+                <option value="">ללא שיוך</option>
+                {approvedUsers.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
 
-            <select name="priority" defaultValue={task.priority || 'MEDIUM'}>
-              <option value="HIGH">🔴 עדיפות: דחוף</option>
-              <option value="MEDIUM">🟡 עדיפות: רגיל</option>
-              <option value="LOW">⚪ עדיפות: נמוך</option>
-            </select>
+              <select name="priority" defaultValue={task.priority || 'MEDIUM'}>
+                <option value="HIGH">🔴 עדיפות: דחוף</option>
+                <option value="MEDIUM">🟡 עדיפות: רגיל</option>
+                <option value="LOW">⚪ עדיפות: נמוך</option>
+              </select>
 
-            <input type="date" name="dueDate" defaultValue={task.due_date || ''} />
-          </div>
+              <input type="date" name="dueDate" defaultValue={task.due_date || ''} />
+            </div>
 
-          <textarea name="description" placeholder="הערות או תיאור מורחב..." defaultValue={task.description} rows={2}></textarea>
-          <textarea name="progressLog" placeholder="הערת סטטוס והתקדמות שוטפת (לדוגמה: 16/08 בוצעו 4 ראיונות מתוך 10)..." defaultValue={task.progress_log} rows={2}></textarea>
-          <input type="url" name="driveLink" defaultValue={task.drive_link} placeholder="קישור לדרייב (אופציונלי)" />
+            <textarea name="description" placeholder="הערות או תיאור מורחב..." defaultValue={task.description} rows={2}></textarea>
+            <textarea name="progressLog" placeholder="הערת סטטוס והתקדמות שוטפת (לדוגמה: 16/08 בוצעו 4 ראיונות מתוך 10)..." defaultValue={task.progress_log} rows={2}></textarea>
+            <input type="url" name="driveLink" defaultValue={task.drive_link} placeholder="קישור לדרייב (אופציונלי)" />
 
-          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-            <button type="button" className="btn btn-outline" onClick={() => setEditingTaskId(null)}>ביטול</button>
-            <button type="submit" className="btn">שמור שינויים</button>
-          </div>
-        </form>
-      </div>
-    ) : (
-      <div 
-        key={task.id} 
-        id={`task-${task.id}`} 
-        className="task-card minimal-card" 
-        onClick={() => setEditingTaskId(task.id)}
-        style={{ cursor: 'pointer', padding: '12px', display: 'flex', alignItems: 'center' }}
-      >
-        <div 
-          className="status-toggle-btn"
-          style={{ cursor: 'pointer', marginRight: '12px', display: 'flex', alignItems: 'center' }} 
-          onClick={(e) => {
-            e.stopPropagation();
-            updateTaskStatus(task.id, task.status === 'DONE' ? 'TODO' : 'DONE');
-          }}
-        >
-          {getStatusIcon(task.status)}
+            {/* Subtasks (רמה ג') */}
+            <div style={{ marginTop: '12px', borderTop: '1px solid #ccc', paddingTop: '12px' }}>
+              <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '8px', color: 'var(--primary-color)' }}>
+                תת-משימות (צ'קליסט)
+              </div>
+              {taskSubtasks.map((st: any) => (
+                <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
+                  <div style={{ cursor: 'pointer', color: st.status === 'DONE' ? 'var(--success-color)' : 'var(--text-secondary)' }} onClick={() => updateSubtaskStatus(st.id, st.status === 'DONE' ? 'TODO' : 'DONE')}>
+                    {st.status === 'DONE' ? <CheckSquare size={16} /> : <Square size={16} />}
+                  </div>
+                  <div style={{ fontSize: '13px', flex: 1, textDecoration: st.status === 'DONE' ? 'line-through' : 'none', color: st.status === 'DONE' ? 'var(--text-secondary)' : 'inherit' }}>
+                    {st.title}
+                  </div>
+                  <button type="button" onClick={() => { if(confirm('למחוק תת-משימה זו?')) deleteSubtask(st.id) }} style={{ background: 'none', border: 'none', color: '#ff6b6b', cursor: 'pointer', fontSize: '12px' }}>
+                    מחק
+                  </button>
+                </div>
+              ))}
+                
+              {addingSubtaskToTaskId === task.id ? (
+                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                  <input type="text" id={`new-subtask-${task.id}`} autoFocus placeholder="תיאור תת-משימה..." style={{ flex: 1, padding: '4px 8px', fontSize: '13px', height: '28px' }} required />
+                  <button type="button" className="btn" style={{ padding: '4px 12px', fontSize: '12px', height: '28px' }} onClick={async () => {
+                    const input = document.getElementById(`new-subtask-${task.id}`) as HTMLInputElement;
+                    if (input && input.value) {
+                      await createSubtask(task.id, input.value);
+                      setAddingSubtaskToTaskId(null);
+                    }
+                  }}>שמור</button>
+                  <button type="button" className="btn btn-outline" style={{ padding: '4px 12px', fontSize: '12px', height: '28px' }} onClick={() => setAddingSubtaskToTaskId(null)}>ביטול</button>
+                </div>
+              ) : (
+                <div style={{ marginTop: '8px' }}>
+                  <button type="button" onClick={() => setAddingSubtaskToTaskId(task.id)} style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Plus size={14} /> הוסף תת-משימה (צ'קליסט)
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '16px', borderTop: '1px solid #ccc', paddingTop: '12px' }}>
+              <button type="button" className="btn btn-outline" style={{ color: 'var(--danger-color)', borderColor: 'var(--danger-color)' }} onClick={() => { if(confirm('למחוק משימה זו?')) deleteTask(task.id) }}>
+                מחק משימה
+              </button>
+              <button type="button" className="btn btn-outline" onClick={() => setEditingTaskId(null)}>ביטול עריכה</button>
+              <button type="submit" className="btn">שמור שינויים</button>
+            </div>
+          </form>
         </div>
-        
-        <div className="task-content" style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div className="task-title" style={{ margin: 0, textDecoration: task.status === 'DONE' ? 'line-through' : 'none', color: task.status === 'DONE' ? 'var(--text-secondary)' : 'inherit', fontSize: '15px' }}>
-              {task.title}
+      ) : (
+        <div 
+          key={task.id} 
+          id={`task-${task.id}`} 
+          className="task-card minimal-card" 
+          onClick={() => setEditingTaskId(task.id)}
+          style={{ cursor: 'pointer', padding: '12px', display: 'flex', alignItems: 'center' }}
+        >
+          <div 
+            className="status-toggle-btn"
+            style={{ cursor: 'pointer', marginRight: '12px', display: 'flex', alignItems: 'center' }} 
+            onClick={(e) => {
+              e.stopPropagation();
+              updateTaskStatus(task.id, task.status === 'DONE' ? 'TODO' : 'DONE');
+            }}
+          >
+            {getStatusIcon(task.status)}
+          </div>
+          
+          <div className="task-content" style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="task-title" style={{ margin: 0, textDecoration: task.status === 'DONE' ? 'line-through' : 'none', color: task.status === 'DONE' ? 'var(--text-secondary)' : 'inherit', fontSize: '15px' }}>
+                {task.title}
+              </div>
+            </div>
+            <div className="task-meta" style={{ marginTop: '4px', fontSize: '12px' }}>
+              <span style={{ color: 'var(--primary-color)', fontWeight: 500 }}>{task.topic_title}</span>
+              <span>•</span>
+              <span>{task.user_name || 'לא שויך'}</span>
+              <span>•</span>
+              {getPriorityBadge(task.priority)}
+              {taskSubtasks.length > 0 && (
+                 <span style={{ marginLeft: '8px', color: '#666', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                   <CheckSquare size={12} /> {completedSubtasks}/{taskSubtasks.length}
+                 </span>
+              )}
+              {task.progress_log && (
+                 <span style={{ marginLeft: '8px', color: '#666' }}>({task.progress_log})</span>
+              )}
             </div>
           </div>
-          <div className="task-meta" style={{ marginTop: '4px', fontSize: '12px' }}>
-            <span style={{ color: 'var(--primary-color)', fontWeight: 500 }}>{task.topic_title}</span>
-            <span>•</span>
-            <span>{task.user_name || 'לא שויך'}</span>
-            <span>•</span>
-            {getPriorityBadge(task.priority)}
-            {task.progress_log && (
-               <span style={{ marginLeft: '8px', color: '#666' }}>({task.progress_log})</span>
-            )}
-          </div>
+          <ChevronDown size={18} color="var(--text-secondary)" style={{ marginLeft: '8px' }} />
         </div>
-        <ChevronDown size={18} color="var(--text-secondary)" style={{ marginLeft: '8px' }} />
-      </div>
-    )
-  );
+      )
+    );
+  };
 
   return (
     <div className="app-container">
