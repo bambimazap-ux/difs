@@ -10,10 +10,10 @@ export default async function Home() {
     redirect('/login');
   }
 
-  const topics = await getTopics();
-  const tasks = await getTasks();
-  const users = await getUsers();
-  const subtasks = await getSubtasks();
+  const topics = JSON.parse(JSON.stringify(await getTopics()));
+  const tasks = JSON.parse(JSON.stringify(await getTasks()));
+  const users = JSON.parse(JSON.stringify(await getUsers()));
+  const subtasks = JSON.parse(JSON.stringify(await getSubtasks()));
 
   const dbUser = users.find((u: any) => u.id === session.userId);
   if (!dbUser || dbUser.is_approved === 0) {

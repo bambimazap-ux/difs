@@ -160,6 +160,8 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
       });
     }
 
+    msg += `\n🔗 *לכניסה למערכת:* https://difs.vercel.app/\n`;
+
     navigator.clipboard.writeText(msg);
     setCopiedWhatsapp(true);
     setTimeout(() => setCopiedWhatsapp(false), 3000);
@@ -204,16 +206,59 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
           נושאים
         </div>
 
-        {initialTopics.map((topic: any) => (
-          <div 
-            key={topic.id}
-            className={`nav-item ${activeFilter === topic.id ? 'active' : ''}`}
-            onClick={() => setActiveFilter(topic.id)}
-          >
-            <Folder size={18} style={{ marginLeft: '12px' }} />
-            {topic.title}
-          </div>
-        ))}
+        {initialTopics.map((topic: any) => {
+          const isTopicActive = activeFilter === topic.id;
+          const topicTasks = initialTasks.filter((t: any) => t.topic_id === topic.id);
+          
+          return (
+            <div key={topic.id}>
+              <div 
+                className={`nav-item ${isTopicActive ? 'active' : ''}`}
+                onClick={() => setActiveFilter(topic.id)}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <Folder size={18} style={{ marginLeft: '12px' }} />
+                  {topic.title}
+                </div>
+                {topicTasks.length > 0 && (
+                  <div style={{ fontSize: '11px', background: isTopicActive ? 'rgba(255,255,255,0.2)' : '#e0e0e0', padding: '2px 6px', borderRadius: '10px' }}>
+                    {topicTasks.length}
+                  </div>
+                )}
+              </div>
+              
+              {/* Show Tasks under the topic if it's active */}
+              {isTopicActive && topicTasks.length > 0 && (
+                <div style={{ paddingRight: '40px', paddingLeft: '16px', marginBottom: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {topicTasks.map((t: any) => (
+                    <div 
+                      key={t.id} 
+                      style={{ 
+                        fontSize: '12px', 
+                        color: t.status === 'DONE' ? 'var(--text-secondary)' : 'var(--text-primary)',
+                        textDecoration: t.status === 'DONE' ? 'line-through' : 'none',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        cursor: 'pointer',
+                        padding: '4px 0'
+                      }}
+                      title={t.title}
+                      onClick={() => {
+                        // Scroll to the task in the main view
+                        const el = document.getElementById(`task-${t.id}`);
+                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }}
+                    >
+                      • {t.title}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         <div style={{ marginTop: '24px', marginBottom: '8px', padding: '0 24px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>חברי צוות {pendingUsers.length > 0 && <span style={{ background: 'var(--danger-color)', color: 'white', padding: '2px 6px', borderRadius: '10px', fontSize: '10px', marginRight: '4px' }}>{pendingUsers.length} ממתינים</span>}</span>
@@ -322,7 +367,7 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button className="btn" style={{ background: 'var(--success-color)', display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '13px' }} onClick={async () => {
                             await approveUser(pUser.id);
-                            const text = `היי ${pUser.name}, חשבונך בפלטפורמת הפיקוח והבקרה של שלדור אושר בהצלחה! תוכל להיכנס למערכת כאן: https://task-manager-difs.vercel.app/`;
+                            const text = `היי ${pUser.name}, חשבונך בפלטפורמת הפיקוח והבקרה של שלדור אושר בהצלחה! תוכל להיכנס למערכת כאן: https://difs.vercel.app/`;
                             window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
                           }}>
                             <UserCheck size={14} /> אשר ושלח עדכון WhatsApp
@@ -632,7 +677,7 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
                 ) : (
                   tasks.map((task: any) => (
                     editingTaskId === task.id ? (
-                      <div key={task.id} className="task-card" style={{ marginBottom: '16px', border: '1px solid var(--primary-color)', flexWrap: 'wrap', backgroundColor: '#f8f9fa' }}>
+                      <div key={task.id} id={`task-${task.id}`} className="task-card" style={{ marginBottom: '16px', border: '1px solid var(--primary-color)', flexWrap: 'wrap', backgroundColor: '#f8f9fa' }}>
                         <form action={async (formData) => {
                           await updateTask(task.id, formData);
                           setEditingTaskId(null);
@@ -670,7 +715,7 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
                         </form>
                       </div>
                     ) : (
-                    <div key={task.id} className="task-card">
+                    <div key={task.id} id={`task-${task.id}`} className="task-card">
                       <div style={{ cursor: 'pointer' }} onClick={() => updateTaskStatus(task.id, task.status === 'DONE' ? 'TODO' : 'DONE')}>
                         {getStatusIcon(task.status)}
                       </div>
@@ -770,7 +815,7 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
                         </button>
                         <button 
                           onClick={() => {
-                            const text = `משימה: ${task.title}\nנושא: ${task.topic_title || 'ללא נושא'}\nאחראי: ${task.user_name || 'טרם שויך'}\nעדיפות: ${task.priority === 'HIGH' ? 'דחוף' : 'רגיל'}${task.due_date ? '\nיעד: ' + task.due_date : ''}${task.progress_log ? '\nסטטוס: ' + task.progress_log : ''}`;
+                            const text = `משימה: ${task.title}\nנושא: ${task.topic_title || 'ללא נושא'}\nאחראי: ${task.user_name || 'טרם שויך'}\nעדיפות: ${task.priority === 'HIGH' ? 'דחוף' : 'רגיל'}${task.due_date ? '\nיעד: ' + task.due_date : ''}${task.progress_log ? '\nסטטוס: ' + task.progress_log : ''}\n\nלצפייה במשימה: https://difs.vercel.app/`;
                             window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
                           }}
                           title="שתף ב-WhatsApp"
