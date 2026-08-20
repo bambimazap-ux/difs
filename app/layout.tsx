@@ -29,6 +29,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="he" dir="rtl">
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+      </head>
       <body>
         {children}
         <script
