@@ -216,7 +216,7 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
           )}
 
           {/* New User Form & Approvals */}
-          {showNewUserForm && (
+          {(showNewUserForm || activeFilter === 'USERS') && (
             <div className="task-card" style={{ marginBottom: '16px', border: '1px solid #1a73e8', backgroundColor: '#e8f0fe', flexDirection: 'column', alignItems: 'stretch' }}>
               
               {pendingUsers.length > 0 && (

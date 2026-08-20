@@ -159,6 +159,13 @@ export default function TaskCard({
             <strong>יומן התקדמות / סטטוס:</strong><br/>
             {task.progress_log || <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>אין הערות סטטוס</span>}
           </div>
+          {task.drive_link && (
+            <div style={{ marginTop: '16px' }}>
+              <a href={task.drive_link} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#e8f0fe', color: '#1a73e8', padding: '8px 16px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold' }}>
+                <Link size={18} /> פתח קישור דרייב / מצורף
+              </a>
+            </div>
+          )}
 
         {/* Subtasks (רמה ג') */}
         <div style={{ marginTop: '16px', borderTop: '1px solid #eee', paddingTop: '16px' }}>
