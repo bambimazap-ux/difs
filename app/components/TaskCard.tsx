@@ -80,6 +80,12 @@ export default function TaskCard({
               <option value="MEDIUM">🟡 רגיל</option>
               <option value="LOW">⚪ נמוך</option>
             </select>
+            <select name="status" defaultValue={task.status || 'TODO'}>
+              <option value="TODO">סטטוס: לביצוע</option>
+              <option value="IN_PROGRESS">סטטוס: בתהליך</option>
+              <option value="DONE">סטטוס: הושלם</option>
+              <option value="STUCK">סטטוס: תקוע</option>
+            </select>
 
             <input type="date" name="dueDate" defaultValue={task.due_date || ''} />
           </div>
@@ -123,6 +129,14 @@ export default function TaskCard({
             <button type="button" className="btn btn-outline" style={{ padding: '6px 12px' }} onClick={(e) => { e.stopPropagation(); setEditingTaskId(task.id); }}>
               <Edit2 size={16} /> ערוך
             </button>
+            <button type="button" className="btn btn-outline" style={{ padding: '6px 12px', color: 'var(--danger-color)', borderColor: 'var(--danger-color)' }} onClick={async (e) => { 
+              e.stopPropagation(); 
+              if (confirm('האם אתה בטוח שברצונך למחוק משימה זו?')) {
+                await deleteTask(task.id);
+              }
+            }}>
+              <Trash2 size={16} /> מחק
+            </button>
             <button type="button" className="btn btn-outline" style={{ padding: '6px', border: 'none' }} onClick={(e) => { e.stopPropagation(); setExpandedTaskId(null); }}>
               <ChevronUp size={20} />
             </button>
@@ -136,19 +150,15 @@ export default function TaskCard({
           {task.due_date && <div><strong style={{ color: 'var(--text-primary)' }}>תאריך יעד:</strong> {new Date(task.due_date).toLocaleDateString('he-IL')}</div>}
         </div>
 
-        {task.description && (
-          <div style={{ marginTop: '16px', fontSize: '14px', lineHeight: '1.5' }}>
+                  <div style={{ marginTop: '16px', fontSize: '14px', lineHeight: '1.5' }}>
             <strong>תיאור מלא:</strong><br/>
-            {task.description}
+            {task.description || <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>אין תיאור למשימה זו (לחץ ערוך להוספה)</span>}
           </div>
-        )}
 
-        {task.progress_log && (
-          <div style={{ marginTop: '16px', fontSize: '14px', lineHeight: '1.5', background: '#e8f0fe', padding: '12px', borderRadius: '8px', color: '#1a73e8' }}>
+                  <div style={{ marginTop: '16px', fontSize: '14px', lineHeight: '1.5', background: 'var(--bg-secondary)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
             <strong>יומן התקדמות / סטטוס:</strong><br/>
-            {task.progress_log}
+            {task.progress_log || <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>אין הערות סטטוס</span>}
           </div>
-        )}
 
         {/* Subtasks (רמה ג') */}
         <div style={{ marginTop: '16px', borderTop: '1px solid #eee', paddingTop: '16px' }}>

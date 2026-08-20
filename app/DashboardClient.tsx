@@ -515,10 +515,20 @@ export default function DashboardClient({ initialTopics, initialTasks, initialSu
                         <option value="LOW">⚪ עדיפות: נמוך</option>
                       </select>
 
+                      
+                      <select name="status" defaultValue="TODO">
+                        <option value="TODO">סטטוס: לביצוע</option>
+                        <option value="IN_PROGRESS">סטטוס: בתהליך</option>
+                        <option value="DONE">סטטוס: הושלם</option>
+                        <option value="STUCK">סטטוס: תקוע</option>
+                      </select>
+
                       <input type="date" name="dueDate" placeholder="תאריך יעד" />
                     </div>
 
                     <input type="url" name="driveLink" placeholder="קישור לתיקייה/קובץ בדרייב (אופציונלי)" />
+                    <textarea name="description" placeholder="הערות או תיאור מורחב..." rows={2}></textarea>
+                    <textarea name="progressLog" placeholder="הערת סטטוס והתקדמות שוטפת (לדוגמה: 16/08 בוצעו 4 ראיונות מתוך 10)..." rows={2}></textarea>
 
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                       <button type="button" className="btn btn-outline" onClick={() => { setShowNewTaskForm(false); setIsNewTopic(false); }}>ביטול</button>

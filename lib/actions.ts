@@ -129,7 +129,7 @@ export async function getTasks() {
     FROM tasks 
     LEFT JOIN topics ON tasks.topic_id = topics.id
     LEFT JOIN users ON tasks.user_id = users.id
-    ORDER BY tasks.created_at DESC
+    ORDER BY CASE WHEN tasks.status = 'DONE' THEN 1 ELSE 0 END, tasks.created_at DESC
   `);
   return result.rows;
 }
@@ -141,7 +141,7 @@ export async function getTasksByTopic(topicId: number) {
       FROM tasks 
       LEFT JOIN users ON tasks.user_id = users.id
       WHERE topic_id = ?
-      ORDER BY tasks.created_at DESC
+      ORDER BY CASE WHEN tasks.status = 'DONE' THEN 1 ELSE 0 END, tasks.created_at DESC
     `,
     args: [topicId]
   });
@@ -157,8 +157,10 @@ export async function createTask(formData: FormData) {
   const priority = (formData.get('priority') as string) || 'MEDIUM';
   const dueDate = (formData.get('dueDate') as string) || null;
   const status = (formData.get('status') as string) || 'TODO';
+  const description = formData.get('description') as string;
+  const progressLog = formData.get('progressLog') as string;
   
-  if (!title) return { error: 'חובה למלא שם משימה' };
+  if (!title) return { error: 'נא להזין כותרת' };
 
   if (topicId === 'NEW_TOPIC' && newTopicTitle) {
     const res = await db.execute({
@@ -167,12 +169,12 @@ export async function createTask(formData: FormData) {
     });
     topicId = res.lastInsertRowid!.toString();
   } else if (!topicId) {
-    return { error: 'חובה לבחור נושא' };
+    return { error: 'נא לבחור נושא' };
   }
 
   const res = await db.execute({
-    sql: 'INSERT INTO tasks (title, topic_id, user_id, drive_link, priority, due_date, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    args: [title, topicId, userId || null, driveLink || null, priority, dueDate, status]
+    sql: 'INSERT INTO tasks (title, topic_id, user_id, drive_link, priority, due_date, status, description, progress_log) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    args: [title, topicId, userId || null, driveLink || null, priority, dueDate, status, description || null, progressLog || null]
   });
   
   const taskId = res.lastInsertRowid!.toString();
@@ -216,12 +218,13 @@ export async function updateTask(id: number, formData: FormData) {
   const priority = (formData.get('priority') as string) || 'MEDIUM';
   const dueDate = (formData.get('dueDate') as string) || null;
   const progressLog = (formData.get('progressLog') as string) || null;
+  const status = (formData.get('status') as string) || 'TODO';
 
-  if (!title || !topicId) return { error: 'חובה למלא שם משימה ונושא' };
+  if (!title || !topicId) return { error: 'חסרים שדות חובה' };
 
   await db.execute({
-    sql: 'UPDATE tasks SET title = ?, description = ?, drive_link = ?, priority = ?, due_date = ?, progress_log = ?, topic_id = ?, user_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-    args: [title, description || null, driveLink || null, priority, dueDate, progressLog, topicId, userId || null, id]
+    sql: 'UPDATE tasks SET title = ?, description = ?, drive_link = ?, priority = ?, due_date = ?, progress_log = ?, topic_id = ?, user_id = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    args: [title, description || null, driveLink || null, priority, dueDate, progressLog, topicId, userId || null, status, id]
   });
   
   await db.execute({
@@ -233,12 +236,17 @@ export async function updateTask(id: number, formData: FormData) {
 }
 
 export async function deleteTask(id: number) {
-  await db.execute({
-    sql: 'DELETE FROM tasks WHERE id = ?',
-    args: [id]
-  });
+  const session = await getSession();
+  if (!session) throw new Error('Unauthorized');
+
+  // Also delete associated subtasks and audit logs
+  await db.execute({ sql: 'DELETE FROM subtasks WHERE task_id = ?', args: [id] });
+  await db.execute({ sql: 'DELETE FROM audit_logs WHERE task_id = ?', args: [id] });
+  await db.execute({ sql: 'DELETE FROM tasks WHERE id = ?', args: [id] });
+  
   revalidatePath('/');
 }
+
 
 export async function getUsers() {
   const result = await db.execute('SELECT id, name, email, is_approved FROM users');
