@@ -69,7 +69,7 @@ export default function MobileNav({
             }}>
               <div 
                 className="fab-menu-item"
-                onClick={() => { setShowNewTaskForm(true); setShowFabMenu(false); }}
+                onClick={() => { setActiveFilter('HOME_TOPICS'); setShowNewTaskForm(true); setShowFabMenu(false); }}
                 style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', cursor: 'pointer', borderRadius: '8px', background: '#f8f9fa' }}
               >
                 <CheckSquare size={18} color="var(--primary-color)" />
@@ -77,7 +77,7 @@ export default function MobileNav({
               </div>
               <div 
                 className="fab-menu-item"
-                onClick={() => { if(setShowNewTopicForm) setShowNewTopicForm(true); setShowFabMenu(false); }}
+                onClick={() => { setActiveFilter('HOME_TOPICS'); if(setShowNewTopicForm) setShowNewTopicForm(true); setShowFabMenu(false); }}
                 style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', cursor: 'pointer', borderRadius: '8px', background: '#f8f9fa' }}
               >
                 <FolderPlus size={18} color="var(--primary-color)" />

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, LogOut, CheckCircle2, Download } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, CheckCircle2, Download, ExternalLink } from 'lucide-react';
 import { logout } from '@/lib/actions';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 
@@ -52,6 +52,17 @@ export default function Sidebar({
                 document.querySelector('.drawer-overlay')?.classList.remove('active');
             }}>
               <Users size={20} /> ניהול משתמשים
+            </li>
+            <li>
+              <a 
+                href="https://drive.google.com/drive/folders/1NMq5a8InOdfhupnxYf77byoRdmzxJd8B?usp=sharing"
+                target="_blank"
+                rel="noreferrer"
+                style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none', color: 'inherit', width: '100%' }}
+              >
+                <ExternalLink size={20} style={{ color: '#1fa463' }} /> 
+                תיקיית פרויקט (Drive)
+              </a>
             </li>
           </ul>
         </div>
